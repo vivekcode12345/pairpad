@@ -5,6 +5,7 @@ import socket from './socket';
 import { createSession } from './yjsProvider';
 import { TEMPLATES, isDefaultTemplate } from './templates';
 import { updateRemoteCursorStyles, removeRemoteCursorStyles } from './remoteCursors';
+import { HomeLink } from './components/ui';
 import './monacoSetup';
 import './App.css';
 
@@ -347,13 +348,29 @@ export default function Interview({ roomId }) {
   if (!interviewerKey && !candidate && !joinStarted) {
     return (
       <div className="join-container">
-        <div className="join-form">
-          <h2>Join Interview</h2>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
-          {joinError && <div className="iv-error">{joinError}</div>}
-          <button onClick={() => join({ userName: name.trim() })}>Join interview</button>
-          <button className="iv-secondary" onClick={leave}>Back to home</button>
-        </div>
+        <header className="join-topbar"><HomeLink /><span>Collaborative technical interviews</span></header>
+        <main className="join-content">
+          <div className="join-form">
+            <span className="join-eyebrow">You’re invited</span>
+            <h1>Join your interview</h1>
+            <p className="join-description">Enter your name to join this private PairPad interview room.</p>
+            <label htmlFor="candidate-name">Your name</label>
+            <input
+              id="candidate-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Priya Sharma"
+              autoComplete="name"
+              autoFocus
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && name.trim()) join({ userName: name.trim() });
+              }}
+            />
+            {joinError && <div className="iv-error">{joinError}</div>}
+            <button disabled={!name.trim()} onClick={() => join({ userName: name.trim() })}>Join interview</button>
+            <button className="iv-secondary" onClick={leave}>Back to home</button>
+          </div>
+        </main>
       </div>
     );
   }
@@ -366,7 +383,7 @@ export default function Interview({ roomId }) {
     const endReason = ended?.endReason || state?.endReason || report?.endReason || 'ended';
     return (
       <div className="iv-ended">
-        <header className="iv-topbar"><strong>Interview ended</strong><span>{endReason}</span></header>
+        <header className="iv-topbar"><HomeLink /><strong>Interview ended</strong><span>{endReason}</span></header>
         <main className="iv-ended-content">
           <section className="iv-ended-summary">
             <h2>{report?.problem?.title || state?.problem?.title || 'Interview'}</h2>
@@ -416,6 +433,7 @@ export default function Interview({ roomId }) {
     <div className="iv-shell">
       {reconnecting && <div className="iv-reconnecting">Reconnecting...</div>}
       <header className="iv-topbar">
+        <HomeLink />
         <strong>{isInterviewer ? 'Interviewer' : 'Candidate'}</strong>
         <span>{state?.interviewerName || interviewerName || 'Interviewer'} · {state?.candidateName || 'Candidate'}</span>
         {remaining !== null && <span className={remaining < 300000 ? 'iv-countdown urgent' : 'iv-countdown'}>{formatTime(remaining)}</span>}

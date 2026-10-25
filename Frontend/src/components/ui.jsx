@@ -45,6 +45,9 @@ export function useToast() {
 export function Logo() {
   return <div className="cc-logo"><img className="cc-logo-mark" src="/logo.png" alt="" /><span>PairPad</span></div>;
 }
+export function HomeLink({ className = '' }) {
+  return <a className={`cc-home-link${className ? ` ${className}` : ''}`} href="/" aria-label="PairPad home"><Logo /></a>;
+}
 export function Splitter({ direction = 'vertical', size, onChange, onReset, min = 15, max = 85 }) {
   const horizontal = direction === 'horizontal';
   const start = (event) => {

@@ -741,10 +741,13 @@ function evictStaleSocket(room, roomId, staleId, newId) {
 }
 
 // Create a fresh room (Yjs doc, awareness, recording) with the default seed text.
-function createRoom(cleanRoomId) {
+function createRoom(cleanRoomId, initialLanguage = 'python') {
     const ydoc = new YDoc();
     ydoc.clientID = 1;
-    ydoc.getText("monaco").insert(0, "// Start your code here");
+    const seedText = initialLanguage === 'python'
+        ? '# Hello World\nprint("Hello, World!")'
+        : '// Start your code here';
+    ydoc.getText("monaco").insert(0, seedText);
     const awareness = new Awareness(ydoc);
     awareness.setLocalState(null);
 
@@ -755,7 +758,7 @@ function createRoom(cleanRoomId) {
         k: 'doc',
         d: Buffer.from(encodeStateAsUpdate(ydoc)).toString('base64'),
     });
-    recordEvent(recording, { t: 0, k: 'lang', v: 'javascript' });
+    recordEvent(recording, { t: 0, k: 'lang', v: initialLanguage });
 
     const ydocUpdateHandler = (update, origin) => {
         // Guard: the room may already have been finalized/destroyed.
@@ -806,7 +809,7 @@ function createRoom(cleanRoomId) {
         users: new Map(),
         ydoc,
         awareness,
-        language: "javascript",
+        language: initialLanguage,
         running: false,
         recording,
         ydocUpdateHandler,
@@ -898,7 +901,7 @@ io.on('connection', (socket) => {
             const interviewerKey = generateKey();
 
             // Create the room shell without joining it yet.
-            const room = createRoom(roomId);
+            const room = createRoom(roomId, 'javascript');
             room.interview = {
                 status: 'lobby',
                 interviewerKey,

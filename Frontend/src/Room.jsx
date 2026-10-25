@@ -5,7 +5,7 @@ import { createSession } from './yjsProvider';
 import { isDefaultTemplate, LANGUAGES, TEMPLATES } from './templates';
 import socket from './socket';
 import { updateRemoteCursorStyles, removeRemoteCursorStyles } from './remoteCursors';
-import { Avatar, Button, IconButton, Logo, Select, Splitter, useToast } from './components/ui';
+import { Avatar, Button, HomeLink, IconButton, Select, Splitter, useToast } from './components/ui';
 import { CopyIcon, MenuIcon, PlayIcon } from './components/Icons';
 import './styles/room.css';
 import './monacoSetup';
@@ -18,7 +18,7 @@ export default function Room({ roomId: initialRoomId = '', initialName = '' }) {
   const params = new URLSearchParams(window.location.search);
   const [roomId] = useState(initialRoomId || params.get('room') || '');
   const [userName] = useState(initialName || params.get('name') || '');
-  const [language, setLanguage] = useState('javascript');
+  const [language, setLanguage] = useState('python');
   const [users, setUsers] = useState([]);
   const [output, setOutput] = useState('');
   const [userInput, setUserInput] = useState('');
@@ -119,12 +119,12 @@ export default function Room({ roomId: initialRoomId = '', initialName = '' }) {
     localStorage.setItem('room-panel-size', String(panelSize));
   }, [panelSize, sidebarCollapsed]);
 
-  if (!joined) return <div className="cc-room"><div className="cc-room-topbar"><Logo /></div><div className="cc-empty-output">Enter a name and room ID to join.</div></div>;
+  if (!joined) return <div className="cc-room"><div className="cc-room-topbar"><HomeLink /></div><div className="cc-empty-output">Enter a name and room ID to join.</div></div>;
   const connection = statusFor(connected);
   return <main className="cc-room">
     <header className="cc-room-topbar">
       <IconButton label="Toggle people sidebar" onClick={() => setSidebarCollapsed((value) => !value)}><MenuIcon /></IconButton>
-      <Logo /><div className="cc-room-chip">{roomId}</div>
+      <HomeLink /><div className="cc-room-chip">{roomId}</div>
       <Button size="small" variant="ghost" onClick={() => copy(roomId, 'ID copied')}><CopyIcon /> Copy ID</Button>
       <Button size="small" variant="ghost" onClick={() => copy(`${window.location.origin}/?replay=${encodeURIComponent(roomId)}`, 'Link copied')}>Copy replay link</Button>
       <div className="cc-top-spacer" /><div className="cc-connection"><span className={`cc-status-dot ${connection.className}`} />{connection.label}</div><Button size="small" variant="danger" onClick={leaveRoom}>Leave</Button>

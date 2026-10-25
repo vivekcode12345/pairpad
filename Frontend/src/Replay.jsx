@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Editor } from '@monaco-editor/react';
 import * as Y from 'yjs';
 
+import { HomeLink } from './components/ui';
 import './monacoSetup';
 import './App.css';
 
@@ -275,6 +276,7 @@ const Replay = ({ roomId }) => {
     return (
       <div className="replay-container">
         <div className="replay-topbar">
+          <HomeLink />
           <h2>Replay: {roomId}</h2>
           <span className="replay-spacer" />
           <button onClick={goBack}>Back</button>
@@ -288,6 +290,7 @@ const Replay = ({ roomId }) => {
     return (
       <div className="replay-container">
         <div className="replay-topbar">
+          <HomeLink />
           <h2>Replay: {roomId}</h2>
           <span className="replay-spacer" />
           <button onClick={goBack}>Back</button>
@@ -300,6 +303,7 @@ const Replay = ({ roomId }) => {
   return (
     <div className="replay-container">
       <div className="replay-topbar">
+        <HomeLink />
         <h2>Replay: {roomId}</h2>
         {recording && recording.endedAt === null && (
           <span className="replay-badge live">Live session still in progress</span>
@@ -387,4 +391,3 @@ const Replay = ({ roomId }) => {
 };
 
 export default Replay;
-
