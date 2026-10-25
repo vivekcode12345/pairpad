@@ -316,7 +316,7 @@ const Replay = ({ roomId }) => {
         <Editor
           height="100%"
           language={language}
-          theme="vs-dark"
+          theme="vs-light"
           value={text}
           options={{
             readOnly: true,
@@ -387,5 +387,4 @@ const Replay = ({ roomId }) => {
 };
 
 export default Replay;
-
 

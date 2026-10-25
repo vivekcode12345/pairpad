@@ -446,7 +446,7 @@ export default function Interview({ roomId }) {
         <div className="iv-running">
           <ProblemPanel problem={problem} />
           <section className="iv-editor-area">
-            <Editor height="100%" language={language} defaultLanguage={language} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: 16, readOnly: !isInterviewer && status !== 'running' }} onMount={(editor) => {
+            <Editor height="100%" language={language} defaultLanguage={language} theme="vs-light" options={{ minimap: { enabled: false }, fontSize: 16, readOnly: !isInterviewer && status !== 'running' }} onMount={(editor) => {
               editorRef.current = editor;
               const session = sessionRef.current;
               if (!session || bindingRef.current) return;

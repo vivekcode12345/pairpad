@@ -5,9 +5,8 @@ import { createSession } from './yjsProvider';
 import { isDefaultTemplate, LANGUAGES, TEMPLATES } from './templates';
 import socket from './socket';
 import { updateRemoteCursorStyles, removeRemoteCursorStyles } from './remoteCursors';
-import { Avatar, Badge, Button, IconButton, Logo, Select, Splitter, ThemeToggle, useToast } from './components/ui';
+import { Avatar, Badge, Button, IconButton, Logo, Select, Splitter, useToast } from './components/ui';
 import { CopyIcon, MenuIcon, PlayIcon } from './components/Icons';
-import { useTheme } from './hooks/useTheme';
 import './styles/room.css';
 import './monacoSetup';
 
@@ -35,7 +34,6 @@ export default function Room({ roomId: initialRoomId = '', initialName = '' }) {
   const joinInfo = useRef(null);
   const editorRef = useRef(null);
   const initialUsers = useRef(true);
-  const { theme, toggle } = useTheme();
   const { toast } = useToast();
   const refreshRemoteCursorStyles = useCallback(() => updateRemoteCursorStyles(sessionRef.current), []);
 
@@ -129,13 +127,13 @@ export default function Room({ roomId: initialRoomId = '', initialName = '' }) {
       <Logo /><Badge>{roomId}</Badge><div className="cc-room-chip">{roomId}</div>
       <Button size="small" variant="ghost" onClick={() => copy(`${window.location.origin}/?room=${encodeURIComponent(roomId)}`, 'Link copied')}><CopyIcon /> Copy link</Button>
       <Button size="small" variant="ghost" onClick={() => copy(`${window.location.origin}/?replay=${encodeURIComponent(roomId)}`, 'Link copied')}>Copy replay link</Button>
-      <div className="cc-top-spacer" /><div className="cc-connection"><span className={`cc-status-dot ${connection.className}`} />{connection.label}</div><ThemeToggle theme={theme} toggle={toggle} /><Button size="small" variant="danger" onClick={leaveRoom}>Leave</Button>
+      <div className="cc-top-spacer" /><div className="cc-connection"><span className={`cc-status-dot ${connection.className}`} />{connection.label}</div><Button size="small" variant="danger" onClick={leaveRoom}>Leave</Button>
     </header>
     <div className="cc-room-body">
       <aside className={`cc-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}><h2>People ({users.length})</h2><div className="cc-people">{users.length ? users.map((name, index) => <div className="cc-person" key={`${name}-${index}`}><Avatar name={name} /><span>{name} {name === userName && <small className="cc-you">(you)</small>}</span></div>) : <p className="cc-empty">No one else is here yet.</p>}</div></aside>
       <section className="cc-workspace">
         <div className="cc-editor-toolbar"><Select label="" className="cc-toolbar-select" value={language} onChange={handleLanguageChange}>{LANGUAGES.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</Select><div className="cc-top-spacer" /><Button variant="primary" loading={running} onClick={runCode}><PlayIcon /> Run&nbsp; ⌘/Ctrl ↵</Button></div>
-        <div className="cc-editor"><Editor height="100%" language={language} theme={theme === 'dark' ? 'cc-dark' : 'cc-light'} options={{ minimap: { enabled: false }, fontFamily: 'var(--font-mono)', fontSize: 14, fontLigatures: true, smoothScrolling: true, cursorSmoothCaretAnimation: 'on', padding: { top: 12, bottom: 12 }, scrollBeyondLastLine: false, renderLineHighlight: 'all', bracketPairColorization: { enabled: true }, automaticLayout: true }} onMount={(editor) => {
+        <div className="cc-editor"><Editor height="100%" language={language} theme="cc-light" options={{ minimap: { enabled: false }, fontFamily: 'var(--font-mono)', fontSize: 14, fontLigatures: true, smoothScrolling: true, cursorSmoothCaretAnimation: 'on', padding: { top: 12, bottom: 12 }, scrollBeyondLastLine: false, renderLineHighlight: 'all', bracketPairColorization: { enabled: true }, automaticLayout: true }} onMount={(editor) => {
           editorRef.current = editor; editor.onDidChangeCursorPosition((event) => setCursorPosition(event.position));
           const session = sessionRef.current; if (!session || bindingRef.current) return;
           bindingRef.current = new MonacoBinding(session.ytext, editor.getModel(), new Set([editor]), session.awareness);

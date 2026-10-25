@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { CodeIcon, GithubIcon, ReplayIcon, SunIcon, SearchIcon } from './Icons';
+import { CodeIcon, GithubIcon, ReplayIcon, SearchIcon } from './Icons';
 
 const ACTIONS = [
   { id: 'join', title: 'Join or create a room', hint: 'Open the shared room form', icon: CodeIcon },
   { id: 'interview', title: 'Start an interview', hint: 'Set up a structured interview', icon: CodeIcon },
   { id: 'replay', title: 'Watch a replay', hint: 'Review a completed session', icon: ReplayIcon },
   { id: 'generate', title: 'Generate a room ID', hint: 'Create a new room identifier', icon: SearchIcon },
-  { id: 'theme', title: 'Toggle theme', hint: 'Switch between light and dark', icon: SunIcon },
   { id: 'github', title: 'Open GitHub repository', hint: 'Open the project repository', icon: GithubIcon },
 ];
 
@@ -56,7 +55,7 @@ export default function CommandPalette({ onClose, triggerRef, actions }) {
       <div className="cc-command-list" role="listbox" aria-activedescendant={filtered[active] ? `command-${filtered[active].id}` : undefined}>
         {filtered.length ? filtered.map((action, index) => {
           const Icon = action.icon;
-          return <button type="button" role="option" aria-selected={index === active} id={`command-${action.id}`} className={`cc-command-row ${index === active ? 'active' : ''}`} key={action.id} onMouseEnter={() => setActive(index)} onClick={() => { actions[action.id](); onClose(); }}><Icon /><span><strong>{action.title}</strong><small>{action.hint}</small></span>{action.id === 'theme' && <kbd>⌘K</kbd>}</button>;
+          return <button type="button" role="option" aria-selected={index === active} id={`command-${action.id}`} className={`cc-command-row ${index === active ? 'active' : ''}`} key={action.id} onMouseEnter={() => setActive(index)} onClick={() => { actions[action.id](); onClose(); }}><Icon /><span><strong>{action.title}</strong><small>{action.hint}</small></span></button>;
         }) : <p className="cc-command-empty">No matching actions</p>}
       </div>
       <footer className="cc-command-footer">↑↓ navigate&nbsp;&nbsp; ↵ select&nbsp;&nbsp; esc close</footer>

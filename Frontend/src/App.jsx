@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import Replay from './Replay';
 import Interview from './Interview';
 import Home from './Home';
@@ -13,9 +12,7 @@ function AppRouter() {
   const roomId = params.get('room');
   const name = params.get('name');
   useEffect(() => {
-    const saved = localStorage.getItem('theme');
-    const preferred = saved === 'light' || saved === 'dark' ? saved : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-    document.documentElement.dataset.theme = preferred;
+    document.documentElement.dataset.theme = 'light';
   }, []);
   if (replayRoomId) return <Replay roomId={replayRoomId} />;
   if (interviewRoomId) return <Interview roomId={interviewRoomId} />;
@@ -26,3 +23,4 @@ function AppRouter() {
 export default function App() {
   return <ToastProvider><AppRouter /></ToastProvider>;
 }
+import { useEffect } from 'react';

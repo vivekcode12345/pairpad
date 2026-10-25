@@ -17,6 +17,6 @@ export default function CtaBand({ sectionRefs, focusName }) {
   };
   return <section className="cc-cta-band cc-reveal" ref={bandRef} aria-labelledby="cta-heading">
     <div><span className="cc-eyebrow">PAIRPAD</span><h2 id="cta-heading">Ready to code together?</h2></div>
-    <div className="cc-cta-actions"><Button variant="primary" onClick={() => go('start', 'join')}>Join a room</Button><Button className="cc-cta-secondary" onClick={() => go('interview', 'interview')}>Start an interview</Button></div>
+    <div className="cc-cta-actions"><Button variant="primary" onClick={() => go('start', 'join')}>Join a room</Button><Button variant="primary" onClick={() => go('interview', 'interview')}>Start an interview</Button></div>
   </section>;
 }

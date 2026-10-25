@@ -14,18 +14,6 @@ self.MonacoEnvironment = {
 
 loader.config({ monaco });
 
-monaco.editor.defineTheme('cc-dark', {
-  base: 'vs-dark',
-  inherit: true,
-  rules: [],
-  colors: {
-    'editor.background': '#12151c',
-    'editorGutter.background': '#12151c',
-    'editor.selectionBackground': '#7c6cf655',
-    'editor.lineHighlightBackground': '#181c26',
-    'editorCursor.foreground': '#7c6cf6',
-  },
-});
 monaco.editor.defineTheme('cc-light', {
   base: 'vs',
   inherit: true,
@@ -33,8 +21,8 @@ monaco.editor.defineTheme('cc-light', {
   colors: {
     'editor.background': '#ffffff',
     'editorGutter.background': '#ffffff',
-    'editor.selectionBackground': '#7c6cf633',
-    'editor.lineHighlightBackground': '#f0f2f8',
-    'editorCursor.foreground': '#6558d8',
+    'editor.selectionBackground': '#d59a2a33',
+    'editor.lineHighlightBackground': '#f7f7f4',
+    'editorCursor.foreground': '#b87516',
   },
 });

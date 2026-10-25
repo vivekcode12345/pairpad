@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { IconButton, Logo, ThemeToggle } from './ui';
+import { IconButton, Logo } from './ui';
 import { GithubIcon, MenuIcon, SearchIcon } from './Icons';
 import CommandPalette from './CommandPalette';
 import { scrollToSection } from '../scrollTo';
@@ -13,7 +13,7 @@ const LINKS = [
   ['How it works', 'how'],
 ];
 
-export default function Navbar({ theme, toggle, onGenerate, focusName, sectionRefs }) {
+export default function Navbar({ onGenerate, focusName, sectionRefs }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -38,7 +38,6 @@ export default function Navbar({ theme, toggle, onGenerate, focusName, sectionRe
     interview: () => { scrollTo('interview'); focusName('interview'); },
     replay: () => { scrollTo('replay'); focusName('replay'); },
     generate: () => { scrollTo('join'); onGenerate(); focusName('join'); },
-    theme: toggle,
     github: () => window.open(GITHUB_URL, '_blank', 'noopener,noreferrer'),
   };
 
@@ -105,11 +104,10 @@ export default function Navbar({ theme, toggle, onGenerate, focusName, sectionRe
         <div className="cc-navbar-actions">
           <button className="cc-search-pill" type="button" ref={triggerRef} onClick={openPalette}><SearchIcon /><span>Quick actions</span><kbd>{shortcut}</kbd></button>
           <a className="cc-navbar-github" href={GITHUB_URL} target="_blank" rel="noopener noreferrer" aria-label="GitHub repository"><GithubIcon /></a>
-          <ThemeToggle theme={theme} toggle={toggle} />
           <IconButton label="Open navigation menu" aria-expanded={mobileOpen} aria-controls="cc-mobile-menu" onClick={() => setMobileOpen((value) => !value)}><MenuIcon /></IconButton>
         </div>
       </header>
-      {mobileOpen && <div className="cc-mobile-menu" id="cc-mobile-menu" ref={mobileMenuRef}><nav aria-label="Mobile primary">{LINKS.map(([label, id]) => <a href={`#${id}`} key={id} onClick={(event) => { event.preventDefault(); scrollTo(id); }}>{label}</a>)}</nav><button type="button" onClick={() => { setMobileOpen(false); openPalette(); }}><SearchIcon />Quick actions</button><a href={GITHUB_URL} target="_blank" rel="noopener noreferrer"><GithubIcon />GitHub repository</a><div className="cc-mobile-theme"><span>Theme</span><ThemeToggle theme={theme} toggle={toggle} /></div></div>}
+      {mobileOpen && <div className="cc-mobile-menu" id="cc-mobile-menu" ref={mobileMenuRef}><nav aria-label="Mobile primary">{LINKS.map(([label, id]) => <a href={`#${id}`} key={id} onClick={(event) => { event.preventDefault(); scrollTo(id); }}>{label}</a>)}</nav><button type="button" onClick={() => { setMobileOpen(false); openPalette(); }}><SearchIcon />Quick actions</button><a href={GITHUB_URL} target="_blank" rel="noopener noreferrer"><GithubIcon />GitHub repository</a></div>}
     </div>
     {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} triggerRef={triggerRef} actions={actions} />}
   </>, document.body);

@@ -1,41 +1,4 @@
 :root {
-  color-scheme: dark;
-  --bg: #11110f;
-  --surface: #191916;
-  --surface-2: #211f1a;
-  --surface-3: #2a2822;
-  --border: #3a372f;
-  --text: #f5f2ea;
-  --text-muted: #b5b0a3;
-  --accent: #d59a2a;
-  --accent-2: #b87516;
-  --accent-contrast: #ffffff;
-  --accent-ink: #2e1d08;
-  --success: #22c55e;
-  --danger: #ef4444;
-  --warn: #f59e0b;
-  --control-height: 44px;
-  --card-padding: 24px;
-  --radius-card: 16px;
-  --syn-keyword: #c792ea;
-  --syn-function: #82aaff;
-  --syn-string: #c3e88d;
-  --syn-number: #f78c6c;
-  --syn-comment: #7f8c9f;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 14px;
-  --shadow-sm: 0 2px 8px rgb(0 0 0 / 18%);
-  --shadow-md: 0 8px 24px rgb(0 0 0 / 24%);
-  --shadow-lg: 0 20px 60px rgb(0 0 0 / 32%);
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
-  --space-5: 20px; --space-6: 24px; --space-7: 32px; --space-8: 40px;
-  --transition: 160ms ease;
-}
-
-[data-theme="light"] {
   color-scheme: light;
   --bg: #fafaf8;
   --surface: #ffffff;
@@ -44,13 +7,30 @@
   --border: #e5e2da;
   --text: #181817;
   --text-muted: #68707a;
-  --shadow-sm: 0 1px 2px rgb(35 30 20 / 7%), 0 8px 24px rgb(35 30 20 / 6%);
-  --shadow-md: 0 8px 24px rgb(35 30 20 / 10%);
-  --shadow-lg: 0 20px 60px rgb(35 30 20 / 14%);
+  --accent: #d59a2a;
+  --accent-2: #b87516;
+  --accent-contrast: #ffffff;
+  --accent-ink: #4a2d08;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warn: #f59e0b;
+  --control-height: 44px;
+  --card-padding: 24px;
+  --radius-card: 16px;
   --syn-keyword: #7c3aed;
   --syn-function: #2563eb;
   --syn-string: #15803d;
   --syn-number: #c2410c;
   --syn-comment: #64748b;
-  --accent-ink: #4a2d08;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgb(35 30 20 / 7%), 0 8px 24px rgb(35 30 20 / 6%);
+  --shadow-md: 0 8px 24px rgb(35 30 20 / 10%);
+  --shadow-lg: 0 20px 60px rgb(35 30 20 / 14%);
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 32px; --space-8: 40px;
+  --transition: 160ms ease;
 }

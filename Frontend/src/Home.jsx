@@ -4,7 +4,6 @@ import HeroPreview from './components/HeroPreview';
 import Features from './components/Features';
 import HowItWorks from './components/HowItWorks';
 import CtaBand from './components/CtaBand';
-import { useTheme } from './hooks/useTheme';
 import socket from './socket';
 import Navbar from './components/Navbar';
 import './styles/home.css';
@@ -31,7 +30,6 @@ export default function Home() {
   const joinHeadingRef = useRef(null);
   const interviewHeadingRef = useRef(null);
   const replayHeadingRef = useRef(null);
-  const { theme, toggle } = useTheme();
   const sectionRefs = {
     demo: demoSectionRef,
     start: startSectionRef,
@@ -78,7 +76,7 @@ export default function Home() {
 
   return <main className="cc-home" id="main-content">
     <div className="cc-home-inner">
-      <Navbar theme={theme} toggle={toggle} onGenerate={createRoomId} focusName={(id) => (id === 'join' ? nameRef : id === 'interview' ? interviewNameRef : replayNameRef).current?.focus()} sectionRefs={sectionRefs} />
+      <Navbar onGenerate={createRoomId} focusName={(id) => (id === 'join' ? nameRef : id === 'interview' ? interviewNameRef : replayNameRef).current?.focus()} sectionRefs={sectionRefs} />
       <div className="cc-navbar-spacer" aria-hidden="true" />
       <section className="cc-hero">
         <div className="cc-hero-copy"><h1 id="demo" ref={demoSectionRef} tabIndex="-1">Code together.<br /><span>Interview better.</span></h1><p>Real-time collaborative editor with live cursors, sandboxed execution, session replay and interview mode.</p></div>
@@ -104,14 +102,20 @@ export default function Home() {
           <div className="cc-card-intro"><h2 id="replay" ref={replayHeadingRef} tabIndex="-1">Watch a replay</h2><p>Review a completed coding session from its room ID.</p></div>
           <form className="cc-card-form cc-compact-form" onSubmit={watch}>
             <Input label="Room ID" value={replayRoom} onChange={(e) => setReplayRoom(e.target.value)} ref={replayNameRef} placeholder="room-id" error={replayTried && !replayRoom.trim() ? 'Enter a room ID' : undefined} />
-            <Button type="submit">Watch replay</Button>
+            <Button variant="primary" type="submit">Watch replay</Button>
           </form>
         </Card>
       </section>
       <Features sectionRef={featuresSectionRef} />
       <HowItWorks sectionRef={howSectionRef} />
       <CtaBand sectionRefs={sectionRefs} focusName={(id) => (id === 'join' ? nameRef : interviewNameRef).current?.focus()} />
-      <footer className="cc-footer">PairPad · Built with React, Yjs, Socket.io and Monaco · <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">GitHub</a></footer>
+      <footer className="cc-footer">
+        <div className="cc-footer-main">
+          <div className="cc-footer-brand"><span className="cc-footer-logo">◆</span><div><strong>PairPad</strong><span>Code together. Interview better.</span></div></div>
+          <nav aria-label="Footer"><a href="#demo">Demo</a><a href="#features">Features</a><a href="#how">How it works</a><a href="#start">Get started</a><a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">GitHub</a></nav>
+        </div>
+        <div className="cc-footer-bottom"><span>Built for thoughtful technical conversations.</span><span className="cc-footer-status"><i aria-hidden="true" />All systems ready</span><span>© {new Date().getFullYear()} PairPad</span></div>
+      </footer>
     </div>
   </main>;
 }

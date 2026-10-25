@@ -1,9 +1,9 @@
 import { createContext, forwardRef, useCallback, useContext, useMemo, useState } from 'react';
-import { CodeIcon, MoonIcon, SunIcon } from './Icons';
+import { CodeIcon } from './Icons';
 import { colorForName } from '../colors';
 
-export function Button({ variant = 'secondary', size = '', loading = false, children, ...props }) {
-  return <button className={`cc-button ${variant} ${size} ${loading ? 'loading' : ''}`} disabled={loading || props.disabled} {...props}>
+export function Button({ variant = 'secondary', size = '', loading = false, className = '', children, ...props }) {
+  return <button className={`cc-button ${variant} ${size} ${loading ? 'loading' : ''} ${className}`.trim()} disabled={loading || props.disabled} {...props}>
     {loading && <span className="cc-spinner" aria-hidden="true" />}{children}
   </button>;
 }
@@ -41,9 +41,6 @@ export function ToastProvider({ children }) {
 // eslint-disable-next-line react-refresh/only-export-components
 export function useToast() {
   return useContext(ToastContext);
-}
-export function ThemeToggle({ theme, toggle }) {
-  return <IconButton label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} onClick={toggle}>{theme === 'dark' ? <SunIcon /> : <MoonIcon />}</IconButton>;
 }
 export function Logo() {
   return <div className="cc-logo"><svg className="cc-logo-mark" viewBox="0 0 28 28" aria-hidden="true"><path fill="var(--accent)" d="M14 2 25 8v12l-11 6L3 20V8l11-6Z" /><path fill="var(--accent-contrast)" d="m9 11 5-3 5 3v6l-5 3-5-3v-6Zm5-1.2-3 1.8v3.8l3 1.8 3-1.8v-3.8l-3-1.8Z" /></svg><span>PairPad</span></div>;
