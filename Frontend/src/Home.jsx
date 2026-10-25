@@ -111,7 +111,7 @@ export default function Home() {
       <CtaBand sectionRefs={sectionRefs} focusName={(id) => (id === 'join' ? nameRef : interviewNameRef).current?.focus()} />
       <footer className="cc-footer">
         <div className="cc-footer-main">
-          <div className="cc-footer-brand"><span className="cc-footer-logo">◆</span><div><strong>PairPad</strong><span>Code together. Interview better.</span></div></div>
+          <div className="cc-footer-brand"><img className="cc-footer-logo" src="/logo.png" alt="" /><div><strong>PairPad</strong><span>Code together. Interview better.</span></div></div>
           <nav aria-label="Footer"><a href="#demo">Demo</a><a href="#features">Features</a><a href="#how">How it works</a><a href="#start">Get started</a><a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">GitHub</a></nav>
         </div>
         <div className="cc-footer-bottom"><span>Built for thoughtful technical conversations.</span><span className="cc-footer-status"><i aria-hidden="true" />All systems ready</span><span>© {new Date().getFullYear()} PairPad</span></div>

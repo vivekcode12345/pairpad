@@ -32,7 +32,7 @@
 .cc-toast-stack { position: fixed; right: var(--space-5); bottom: var(--space-5); z-index: 20; display: grid; gap: var(--space-2); width: min(360px, calc(100vw - 32px)); }
 .cc-toast { padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-3); box-shadow: var(--shadow-md); color: var(--text); }
 .cc-logo { display: inline-flex; align-items: center; gap: 9px; color: var(--text); font-weight: 700; letter-spacing: -.02em; }
-.cc-logo-mark { width: 28px; height: 28px; }
+.cc-logo-mark { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 8px; object-fit: cover; }
 .cc-splitter { flex: 0 0 6px; background: transparent; transition: background var(--transition); }
 .cc-splitter:hover, .cc-splitter:focus-visible { background: var(--accent); }
 .cc-splitter.vertical { cursor: col-resize; }

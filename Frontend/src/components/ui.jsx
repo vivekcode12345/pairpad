@@ -13,8 +13,8 @@ export function IconButton({ children, label, ...props }) {
 export const Input = forwardRef(function Input({ label, error, ...props }, ref) {
   return <label className="cc-field">{label && <span>{label}</span>}<input ref={ref} className={`cc-input ${error ? 'error' : ''}`} {...props} />{error && <small className="cc-field-error">{error}</small>}</label>;
 });
-export function Select({ label, children, ...props }) {
-  return <label className="cc-field">{label && <span>{label}</span>}<select className="cc-select" {...props}>{children}</select></label>;
+export function Select({ label, className = '', children, ...props }) {
+  return <label className="cc-field">{label && <span>{label}</span>}<select className={`cc-select ${className}`.trim()} {...props}>{children}</select></label>;
 }
 export function Textarea({ label, ...props }) {
   return <label className="cc-field">{label && <span>{label}</span>}<textarea className="cc-textarea" {...props} /></label>;
@@ -43,7 +43,7 @@ export function useToast() {
   return useContext(ToastContext);
 }
 export function Logo() {
-  return <div className="cc-logo"><svg className="cc-logo-mark" viewBox="0 0 28 28" aria-hidden="true"><path fill="var(--accent)" d="M14 2 25 8v12l-11 6L3 20V8l11-6Z" /><path fill="var(--accent-contrast)" d="m9 11 5-3 5 3v6l-5 3-5-3v-6Zm5-1.2-3 1.8v3.8l3 1.8 3-1.8v-3.8l-3-1.8Z" /></svg><span>PairPad</span></div>;
+  return <div className="cc-logo"><img className="cc-logo-mark" src="/logo.png" alt="" /><span>PairPad</span></div>;
 }
 export function Splitter({ direction = 'vertical', size, onChange, onReset, min = 15, max = 85 }) {
   const horizontal = direction === 'horizontal';

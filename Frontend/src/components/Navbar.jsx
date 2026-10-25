@@ -96,7 +96,7 @@ export default function Navbar({ onGenerate, focusName, sectionRefs }) {
     <a className="cc-skip-link" href="#main-content">Skip to content</a>
     <div className={`cc-navbar-wrap ${scrolled ? 'scrolled' : ''}`}>
       <header className="cc-navbar">
-        <Logo />
+        <a className="cc-navbar-logo" href="/" aria-label="PairPad home"><Logo /></a>
         <nav className="cc-navbar-links" aria-label="Primary" ref={navRef} onMouseLeave={() => setHovered(null)}>
           <span className="cc-nav-highlight" ref={highlightRef} />
           {LINKS.map(([label, id]) => <a href={`#${id}`} key={id} ref={(element) => { linksRef.current[id] = element; }} aria-current={active === id ? 'true' : undefined} onMouseEnter={() => setHovered(id)} onClick={(event) => { event.preventDefault(); scrollTo(id); }}>{label}</a>)}

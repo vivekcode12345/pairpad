@@ -1,4 +1,4 @@
-.cc-home { position: relative; display: flex; min-height: 100dvh; overflow-x: clip; background: var(--bg); }
+.cc-home { position: relative; display: flex; min-height: 100dvh; overflow: clip; background: var(--bg); }
 .cc-home::before, .cc-home::after { position: absolute; width: 42vw; height: 42vw; border-radius: 50%; background: var(--accent); content: ""; filter: blur(90px); opacity: .08; pointer-events: none; }
 .cc-home::before { top: -18vw; left: -12vw; animation: cc-drift 16s ease-in-out infinite alternate; }
 .cc-home::after { right: -14vw; bottom: -20vw; background: var(--accent-2); opacity: .06; animation: cc-drift 20s ease-in-out infinite alternate-reverse; }
@@ -30,7 +30,7 @@
 .cc-footer { margin-top: 40px; padding-top: 24px; padding-bottom: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: .78rem; }
 .cc-footer-main { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .cc-footer-brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-align: left; }
-.cc-footer-logo { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 9px; color: var(--accent-ink); background: var(--accent); font-size: .8rem; }
+.cc-footer-logo { width: 42px; height: 42px; flex: 0 0 42px; border: 1px solid var(--border); border-radius: 12px; object-fit: cover; box-shadow: var(--shadow-sm); }
 .cc-footer-brand strong { display: block; font-size: .92rem; }
 .cc-footer-brand span:not(.cc-footer-logo) { display: block; margin-top: 2px; color: var(--text-muted); font-size: .72rem; }
 .cc-footer nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 18px; }
