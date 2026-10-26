@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import Replay from './Replay';
 import Interview from './Interview';
 import Home from './Home';
@@ -23,4 +24,3 @@ function AppRouter() {
 export default function App() {
   return <ToastProvider><AppRouter /></ToastProvider>;
 }
-import { useEffect } from 'react';

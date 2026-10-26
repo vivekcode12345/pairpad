@@ -11,3 +11,6 @@ export const ChevronIcon = (props) => icon(<path d="m7 9 5 5 5-5" />, props);
 export const ShieldIcon = (props) => icon(<><path d="M12 3 20 6v5c0 5-3.4 8.3-8 10-4.6-1.7-8-5-8-10V6l8-3Z" /><path d="m8.5 12 2.2 2.2 4.8-5" /></>, props);
 export const TerminalIcon = (props) => icon(<><path d="m4 6 6 6-6 6M13 18h7" /></>, props);
 export const TimerIcon = (props) => icon(<><circle cx="12" cy="13" r="7" /><path d="M12 9v4l2.5 1.5M9 2h6M12 2v4" /></>, props);
+export const MicIcon = (props) => icon(<><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8" /></>, props);
+export const VideoIcon = (props) => icon(<><rect x="3" y="6" width="13" height="12" rx="2" /><path d="m16 10 5-3v10l-5-3" /></>, props);
+export const PhoneOffIcon = (props) => icon(<><path d="M16 8.5a11 11 0 0 1 2.5 2.1l1.5-1.1a2 2 0 0 1 2.5.2l.8.8a2 2 0 0 1 0 2.8l-1.7 1.7a2 2 0 0 1-2.1.4A22 22 0 0 1 8.1 5.5a2 2 0 0 1 .4-2.1L10.2 1.7a2 2 0 0 1 2.8 0l.8.8a2 2 0 0 1 .2 2.5l-1.1 1.5A11 11 0 0 1 16 8.5Z" /><path d="m3 3 18 18" /></>, props);

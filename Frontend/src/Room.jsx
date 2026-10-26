@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Editor } from '@monaco-editor/react';
 import { MonacoBinding } from 'y-monaco';
 import { createSession } from './yjsProvider';
 import { isDefaultTemplate, LANGUAGES, TEMPLATES } from './templates';
 import socket from './socket';
 import { updateRemoteCursorStyles, removeRemoteCursorStyles } from './remoteCursors';
-import { Avatar, Button, HomeLink, IconButton, Select, Splitter, useToast } from './components/ui';
-import { CopyIcon, MenuIcon, PlayIcon } from './components/Icons';
+import { Button, HomeLink, IconButton, useToast } from './components/ui';
+import { CopyIcon, MenuIcon } from './components/Icons';
+import RoomSidebar from './components/RoomSidebar';
+import RoomWorkspace from './components/RoomWorkspace';
 import './styles/room.css';
 import './monacoSetup';
 
@@ -20,6 +21,7 @@ export default function Room({ roomId: initialRoomId = '', initialName = '' }) {
   const [userName] = useState(initialName || params.get('name') || '');
   const [language, setLanguage] = useState('python');
   const [users, setUsers] = useState([]);
+  const [participants, setParticipants] = useState([]);
   const [output, setOutput] = useState('');
   const [userInput, setUserInput] = useState('');
   const [running, setRunning] = useState(false);
@@ -52,6 +54,7 @@ export default function Room({ roomId: initialRoomId = '', initialName = '' }) {
   useEffect(() => {
     const onJoined = (list) => notifyUserDiff(list);
     const onLeft = (list) => notifyUserDiff(list);
+    const onParticipants = (list) => setParticipants(Array.isArray(list) ? list : []);
     const onLanguage = (next) => setLanguage(next);
     const onRunning = () => { setRunning(true); setOutput('Running...'); setPanel('output'); };
     const onResponse = (response) => { setRunning(false); setOutput(response.run?.output ?? ''); setPanel('output'); };
@@ -59,6 +62,7 @@ export default function Room({ roomId: initialRoomId = '', initialName = '' }) {
     const onDisconnect = () => setConnected(false);
     socket.on('user-joined', onJoined);
     socket.on('user-Left', onLeft);
+    socket.on('room-participants', onParticipants);
     socket.on('languageChange', onLanguage);
     socket.on('codeRunning', onRunning);
     socket.on('codeResponse', onResponse);
@@ -66,6 +70,7 @@ export default function Room({ roomId: initialRoomId = '', initialName = '' }) {
     socket.on('disconnect', onDisconnect);
     return () => {
       socket.off('user-joined', onJoined); socket.off('user-Left', onLeft);
+      socket.off('room-participants', onParticipants);
       socket.off('languageChange', onLanguage); socket.off('codeRunning', onRunning);
       socket.off('codeResponse', onResponse); socket.off('connect', onConnect); socket.off('disconnect', onDisconnect);
       removeRemoteCursorStyles();
@@ -119,6 +124,15 @@ export default function Room({ roomId: initialRoomId = '', initialName = '' }) {
     localStorage.setItem('room-panel-size', String(panelSize));
   }, [panelSize, sidebarCollapsed]);
 
+  const handleEditorMount = (editor) => {
+    editorRef.current = editor;
+    editor.onDidChangeCursorPosition((event) => setCursorPosition(event.position));
+    const session = sessionRef.current;
+    if (!session || bindingRef.current) return;
+    bindingRef.current = new MonacoBinding(session.ytext, editor.getModel(), new Set([editor]), session.awareness);
+    refreshRemoteCursorStyles();
+  };
+
   if (!joined) return <div className="cc-room"><div className="cc-room-topbar"><HomeLink /></div><div className="cc-empty-output">Enter a name and room ID to join.</div></div>;
   const connection = statusFor(connected);
   return <main className="cc-room">
@@ -130,19 +144,27 @@ export default function Room({ roomId: initialRoomId = '', initialName = '' }) {
       <div className="cc-top-spacer" /><div className="cc-connection"><span className={`cc-status-dot ${connection.className}`} />{connection.label}</div><Button size="small" variant="danger" onClick={leaveRoom}>Leave</Button>
     </header>
     <div className="cc-room-body">
-      <aside className={`cc-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}><h2>People ({users.length})</h2><div className="cc-people">{users.length ? users.map((name, index) => <div className="cc-person" key={`${name}-${index}`}><Avatar name={name} /><span>{name} {name === userName && <small className="cc-you">(you)</small>}</span></div>) : <p className="cc-empty">No one else is here yet.</p>}</div></aside>
-      <section className="cc-workspace">
-        <div className="cc-editor-toolbar"><Select label="" className="cc-toolbar-select" value={language} onChange={handleLanguageChange}>{LANGUAGES.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</Select><div className="cc-top-spacer" /><Button variant="primary" loading={running} onClick={runCode}><PlayIcon /> Run&nbsp; ⌘/Ctrl ↵</Button></div>
-        <div className="cc-editor"><Editor height="100%" language={language} theme="cc-light" options={{ minimap: { enabled: false }, fontFamily: 'var(--font-mono)', fontSize: 14, fontLigatures: true, smoothScrolling: true, cursorSmoothCaretAnimation: 'on', padding: { top: 12, bottom: 12 }, scrollBeyondLastLine: false, renderLineHighlight: 'all', bracketPairColorization: { enabled: true }, automaticLayout: true }} onMount={(editor) => {
-          editorRef.current = editor; editor.onDidChangeCursorPosition((event) => setCursorPosition(event.position));
-          const session = sessionRef.current; if (!session || bindingRef.current) return;
-          bindingRef.current = new MonacoBinding(session.ytext, editor.getModel(), new Set([editor]), session.awareness);
-          refreshRemoteCursorStyles();
-        }} /></div>
-        <Splitter direction="horizontal" size={panelSize} onChange={setPanelSize} onReset={() => setPanelSize(30)} />
-        <div className="cc-bottom-panel" style={{ height: `${panelSize}%` }}><div className="cc-panel-tabs"><button className={`cc-tab ${panel === 'input' ? 'active' : ''}`} onClick={() => setPanel('input')}>Input</button><button className={`cc-tab ${panel === 'output' ? 'active' : ''}`} onClick={() => setPanel('output')}>Output</button><div className="cc-top-spacer" />{panel === 'output' && <Button size="small" variant="ghost" onClick={() => setOutput('')}>Clear</Button>}</div><div className="cc-panel-content">{panel === 'input' ? <textarea className="cc-textarea" aria-label="Standard input" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder="Enter input for your program..." /> : output ? <pre className="cc-output">{output}</pre> : <div className="cc-empty-output">Run your code to see output here</div>}</div></div>
-        <footer className="cc-statusbar"><span>{language}</span><span>Ln {cursorPosition.lineNumber}, Col {cursorPosition.column}</span><span className="cc-statusbar-spacer" /><span>{users.length} people</span><span>{connection.label}</span></footer>
-      </section>
+      <RoomSidebar collapsed={sidebarCollapsed} socket={socket} userName={userName} participants={participants} users={users} />
+      <RoomWorkspace
+        language={language}
+        languages={LANGUAGES}
+        onLanguageChange={handleLanguageChange}
+        running={running}
+        onRun={runCode}
+        editorMount={handleEditorMount}
+        panelSize={panelSize}
+        onPanelSizeChange={setPanelSize}
+        onPanelReset={() => setPanelSize(30)}
+        panel={panel}
+        onPanelChange={setPanel}
+        output={output}
+        onClearOutput={() => setOutput('')}
+        userInput={userInput}
+        onUserInputChange={(event) => setUserInput(event.target.value)}
+        cursorPosition={cursorPosition}
+        peopleCount={users.length}
+        connection={connection}
+      />
     </div>
   </main>;
 }

@@ -62,7 +62,11 @@ PairPad is a small full-stack JavaScript application:
 ```text
 PairPad/
 ├── Backend/
-│   ├── index.js        Express + HTTP + Socket.IO server
+│   ├── index.js        Server bootstrap and Socket.IO room coordination
+│   ├── config/         Environment-backed limits and service constants
+│   ├── routes/         HTTP API and static frontend routes
+│   ├── services/       External execution services such as Wandbox
+│   ├── utils/          Shared validation and security helpers
 │   └── problems.js     Interview problem definitions and test data
 ├── Frontend/
 │   ├── src/
@@ -97,7 +101,7 @@ PairPad/
 - Socket.IO for room collaboration and interview events
 - Yjs document synchronization and awareness updates
 - In-memory active rooms and finished recordings
-- Axios integration with Wandbox for code execution and judging
+- Modular Axios integration with Wandbox for code execution and judging
 
 The current server keeps active room state and finished recordings in memory. Restarting the backend clears that in-memory state.
 

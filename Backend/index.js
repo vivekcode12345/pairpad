@@ -4,9 +4,35 @@ import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
-import axios from 'axios';
 import { Doc as YDoc } from 'yjs';
 import { PROBLEMS, publicProblem, listProblems } from './problems.js';
+import {
+    WANDBOX_COMPILERS,
+    MAX_CODE,
+    MAX_UPDATE_BYTES,
+    MAX_EVENTS,
+    MAX_RECORDING_BYTES,
+    MAX_FINISHED,
+    FINISHED_TTL_MS,
+    MAX_SUBMISSIONS,
+    SUBMIT_COOLDOWN_MS,
+    GRACE_MS,
+    JUDGE_TIMEOUT_MS,
+    MAX_FINISHED_INTERVIEWS,
+    FINISHED_INTERVIEW_TTL_MS,
+    ALLOWED_DURATIONS_MIN,
+    MAX_INTERVIEW_DURATION_MS,
+    ALLOW_SHORT,
+    JUDGE_MAX_ATTEMPTS,
+} from './config/constants.js';
+import { runOnWandbox, compileWithWandbox } from './services/wandbox.js';
+import { registerApiRoutes } from './routes/api.js';
+import {
+    toUpdateBytes,
+    generateKey,
+    timingSafeEqualStr,
+    normalizeForCompare,
+} from './utils/validation.js';
 import { Awareness } from 'y-protocols/awareness';
 import {
   applyAwarenessUpdate,
@@ -14,120 +40,6 @@ import {
   removeAwarenessStates,
 } from 'y-protocols/awareness';
 import { applyUpdate, encodeStateAsUpdate } from 'yjs';
-
-// Wandbox — free code execution API, no key/signup needed.
-// Docs: https://github.com/melpon/wandbox/blob/master/kennel/API.md
-const WANDBOX_COMPILERS = {
-    javascript: 'nodejs-20.17.0',
-    python: 'cpython-3.12.7',
-    cpp: 'gcc-13.2.0',
-    java: 'openjdk-jdk-21+35',
-};
-
-const MAX_CODE = 100000;
-const MAX_UPDATE_BYTES = 200000;
-
-function toUpdateBytes(data) {
-    if (data instanceof Uint8Array) return data;
-    if (data instanceof ArrayBuffer) return new Uint8Array(data);
-    if (ArrayBuffer.isView(data)) {
-        return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-    }
-    if (Array.isArray(data) && data.every((value) => Number.isInteger(value) && value >= 0 && value <= 255)) {
-        return Uint8Array.from(data);
-    }
-    return null;
-}
-
-// --- Session replay recording limits ---
-const MAX_EVENTS = (() => {
-    const n = parseInt(process.env.REPLAY_MAX_EVENTS, 10);
-    return Number.isFinite(n) && n > 0 ? n : 20000;
-})();
-const MAX_RECORDING_BYTES = 5_000_000;
-const MAX_FINISHED = 30;
-const FINISHED_TTL_MS = 24 * 60 * 60 * 1000;
-// Per-IP rate limit for GET /api/replay/:roomId (20 requests / minute by default).
-const REPLAY_RATE_MAX = (() => {
-    const n = parseInt(process.env.REPLAY_RATE_MAX, 10);
-    return Number.isFinite(n) && n > 0 ? n : 20;
-})();
-const REPLAY_RATE_WINDOW_MS = (() => {
-    const n = parseInt(process.env.REPLAY_RATE_WINDOW_MS, 10);
-    return Number.isFinite(n) && n > 0 ? n : 60000;
-})();
-
-async function runOnWandbox(language, code, stdin = "") {
-    const compiler = WANDBOX_COMPILERS[language];
-    if (!compiler) throw new Error(`Language '${language}' not supported`);
-    const { data } = await axios.post('https://wandbox.org/api/compile.json', {
-        compiler,
-        code,
-        stdin: String(stdin).slice(0, 5000),
-        save: false,
-    }, { timeout: 60000 });
-    if (!data.program_output && data.compiler_error) {
-        return String(data.compiler_error).slice(0, 5000);
-    }
-    const out = data.program_output || data.program_message
-        || data.compiler_output || data.compiler_message
-        || '(no output)';
-    return String(out).slice(0, 5000);
-}
-
-// Detailed Wandbox call for the judge: returns structured verdict info.
-// Wandbox's public instance is shared and sometimes cannot start a container
-// ("OCI runtime error: crun: clone: Resource temporarily unavailable", exit
-// status 126). That is an infrastructure failure, NOT a compile error, so it
-// must be reported as IE and retried instead of failing the submission.
-const WANDBOX_INFRA_RE = /(OCI runtime error|Resource temporarily unavailable|Cannot connect to the Docker|containerd|docker daemon|spawn .* failed)/i;
-
-async function wandboxCompile(language, code, stdin, timeoutMs) {
-    const compiler = WANDBOX_COMPILERS[language];
-    if (!compiler) {
-        return {
-            compilerError: '', programOutput: '', programMessage: '',
-            status: -1, timeOut: false, internalError: `Language '${language}' not supported`, ms: 0,
-        };
-    }
-    const start = Date.now();
-    try {
-        const { data } = await axios.post('https://wandbox.org/api/compile.json', {
-            compiler,
-            code,
-            stdin: String(stdin).slice(0, 5000),
-            save: false,
-        }, { timeout: timeoutMs });
-        const compilerError = data.compiler_error || '';
-        const programMessage = data.program_message || '';
-        // A container that cannot even start is an infrastructure failure.
-        const infra = WANDBOX_INFRA_RE.test(compilerError)
-            || WANDBOX_INFRA_RE.test(programMessage)
-            || String(data.status) === '126';
-        return {
-            compilerError: infra ? '' : compilerError,
-            programOutput: data.program_output || '',
-            programMessage,
-            status: data.status,
-            timeOut: !!data.time_out,
-            internalError: infra
-                ? String(compilerError || programMessage || 'Wandbox container failed to start').slice(0, 5000)
-                : '',
-            ms: Date.now() - start,
-        };
-    } catch (e) {
-        const timedOut = e?.code === 'ECONNABORTED' || e?.code === 'ETIMEDOUT';
-        return {
-            compilerError: '',
-            programOutput: '',
-            programMessage: '',
-            status: -1,
-            timeOut: timedOut,
-            internalError: timedOut ? '' : `Wandbox request failed: ${e?.message || 'network error'}`,
-            ms: Date.now() - start,
-        };
-    }
-}
 
 // Generate an 8-char lowercase alphanumeric room id (no collision with existing rooms).
 function generateRoomId() {
@@ -138,26 +50,6 @@ function generateRoomId() {
         id = Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
     } while (rooms.has(id));
     return id;
-}
-
-function generateKey() {
-    return crypto.randomBytes(18).toString('base64url');
-}
-
-function timingSafeEqualStr(a, b) {
-    if (typeof a !== 'string' || typeof b !== 'string') return false;
-    const ab = Buffer.from(a);
-    const bb = Buffer.from(b);
-    if (ab.length !== bb.length) return false;
-    return crypto.timingSafeEqual(ab, bb);
-}
-
-// Trim leading/trailing blank lines, then trim trailing whitespace per line.
-function normalizeForCompare(s) {
-    const lines = String(s).split('\n').map((l) => l.replace(/\s+$/, ''));
-    while (lines.length && lines[0] === '') lines.shift();
-    while (lines.length && lines[lines.length - 1] === '') lines.pop();
-    return lines.join('\n');
 }
 
 const app = express();
@@ -181,29 +73,6 @@ const rooms = new Map();
 const finishedRecordings = new Map();
 // Finished interview reports kept after a room is deleted, keyed by roomId.
 const finishedInterviews = new Map();
-
-// --- Interview constants ---
-const MAX_SUBMISSIONS = (() => {
-    const n = parseInt(process.env.INTERVIEW_MAX_SUBMISSIONS, 10);
-    return Number.isFinite(n) && n > 0 ? n : 5;
-})();
-const SUBMIT_COOLDOWN_MS = (() => {
-    const n = parseInt(process.env.INTERVIEW_SUBMIT_COOLDOWN_MS, 10);
-    return Number.isFinite(n) && n >= 0 ? n : 15000;
-})();
-const GRACE_MS = (() => {
-    const n = parseInt(process.env.INTERVIEW_GRACE_MS, 10);
-    return Number.isFinite(n) && n > 0 ? n : 600000; // 10 min
-})();
-const JUDGE_TIMEOUT_MS = (() => {
-    const n = parseInt(process.env.INTERVIEW_JUDGE_TIMEOUT_MS, 10);
-    return Number.isFinite(n) && n > 0 ? n : 40000;
-})(); // per-test judge timeout
-const MAX_FINISHED_INTERVIEWS = 30;
-const FINISHED_INTERVIEW_TTL_MS = 24 * 60 * 60 * 1000;
-const ALLOWED_DURATIONS_MIN = [15, 30, 45, 60, 90];
-const MAX_INTERVIEW_DURATION_MS = Math.max(...ALLOWED_DURATIONS_MIN) * 60 * 1000;
-const ALLOW_SHORT = process.env.INTERVIEW_ALLOW_SHORT === '1';
 
 function createRecording(roomId) {
     return {
@@ -352,12 +221,10 @@ function isCompileError(language, message) {
 // Run one hidden test: returns { verdict, ms, actual }.
 // A transient Wandbox infrastructure failure (IE) is retried, because the
 // public instance is shared and often cannot start a container.
-const JUDGE_MAX_ATTEMPTS = 3;
-
 async function judgeTest(language, code, testInput, testExpected) {
     let last = { verdict: 'IE', ms: 0, actual: '' };
     for (let attempt = 1; attempt <= JUDGE_MAX_ATTEMPTS; attempt++) {
-        const res = await wandboxCompile(language, code, testInput, JUDGE_TIMEOUT_MS);
+        const res = await compileWithWandbox(language, code, testInput, JUDGE_TIMEOUT_MS);
         if (res.compilerError) {
             return { verdict: 'CE', ms: res.ms, actual: String(res.compilerError).slice(0, 5000) };
         }
@@ -708,6 +575,7 @@ function leave(socket) {
         rooms.delete(roomId);
     } else {
         io.to(roomId).emit("user-Left", [...room.users.values()]);
+        io.to(roomId).emit("room-participants", [...room.users].map(([id, name]) => ({ id, name })));
     }
     socket.currentRoom = null;
     socket.currentUser = null;
@@ -738,6 +606,7 @@ function evictStaleSocket(room, roomId, staleId, newId) {
         }
     }
     io.to(roomId).emit("user-Left", [...room.users.values()]);
+    io.to(roomId).emit("room-participants", [...room.users].map(([id, name]) => ({ id, name })));
 }
 
 // Create a fresh room (Yjs doc, awareness, recording) with the default seed text.
@@ -864,6 +733,7 @@ function joinRoom(socket, roomId, userName, role) {
     socket.emit("languageChange", room.language);
 
     io.to(cleanRoomId).emit("user-joined", [...room.users.values()]);
+    io.to(cleanRoomId).emit("room-participants", [...room.users].map(([id, name]) => ({ id, name })));
     return true;
 }
 
@@ -1241,6 +1111,33 @@ socket.on("yjs-update", (data) => {
         }
     });
 
+    socket.on("video-offer", (payload) => {
+        const roomId = socket.currentRoom;
+        const targetId = payload && typeof payload === 'object' ? payload.targetId : null;
+        if (!roomId || !rooms.has(roomId) || typeof targetId !== 'string') return;
+        if (!rooms.get(roomId).users.has(targetId)) return;
+        io.to(targetId).emit("video-offer", { fromId: socket.id, offer: payload.offer });
+    });
+
+    socket.on("video-answer", (payload) => {
+        const roomId = socket.currentRoom;
+        const targetId = payload && typeof payload === 'object' ? payload.targetId : null;
+        if (!roomId || !rooms.has(roomId) || typeof targetId !== 'string') return;
+        if (!rooms.get(roomId).users.has(targetId)) return;
+        io.to(targetId).emit("video-answer", { fromId: socket.id, answer: payload.answer });
+    });
+
+    socket.on("video-ice-candidate", (payload) => {
+        const roomId = socket.currentRoom;
+        const targetId = payload && typeof payload === 'object' ? payload.targetId : null;
+        if (!roomId || !rooms.has(roomId) || typeof targetId !== 'string') return;
+        if (!rooms.get(roomId).users.has(targetId)) return;
+        io.to(targetId).emit("video-ice-candidate", {
+            fromId: socket.id,
+            candidate: payload.candidate,
+        });
+    });
+
     socket.on("languageChange", (payload) => {
         // Do NOT destructure in the parameter list: a null payload would throw
         // before the body runs and take the whole server down.
@@ -1333,102 +1230,13 @@ socket.on("yjs-update", (data) => {
 });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// Session replay endpoint — MUST be registered BEFORE the '/*splat' static fallback.
-const replayHits = new Map(); // ip -> [timestamps within the current window]
-app.get('/api/replay/:roomId', (req, res) => {
-    const ip = req.ip || (req.socket && req.socket.remoteAddress) || 'unknown';
-    const now = Date.now();
-    let hits = replayHits.get(ip) || [];
-    hits = hits.filter((ts) => now - ts < REPLAY_RATE_WINDOW_MS);
-    if (hits.length >= REPLAY_RATE_MAX) {
-        replayHits.set(ip, hits);
-        return res.status(429).json({ error: 'Too many requests' });
-    }
-    hits.push(now);
-    replayHits.set(ip, hits);
-
-    const { roomId } = req.params;
-    if (typeof roomId !== 'string' || roomId.length < 1 || roomId.length > 100) {
-        return res.status(400).json({ error: 'Invalid room id' });
-    }
-
-    // Live room first (endedAt stays null), then finished recordings.
-    let rec = null;
-    if (rooms.has(roomId)) rec = rooms.get(roomId).recording;
-    if (!rec) rec = finishedRecordings.get(roomId);
-    if (!rec) return res.status(404).json({ error: 'No recording found' });
-
-    res.set('Cache-Control', 'no-store');
-    return res.json({
-        roomId: rec.roomId,
-        startedAt: rec.startedAt,
-        endedAt: rec.endedAt,
-        truncated: rec.truncated,
-        events: rec.events,
-    });
-});
-
-// Interview report endpoint — MUST be registered BEFORE the '/*splat' static fallback.
-// Requires the "x-interviewer-key" header.
-app.get('/api/interview/:roomId/report', (req, res) => {
-    const ip = req.ip || (req.socket && req.socket.remoteAddress) || 'unknown';
-    const now = Date.now();
-    let hits = replayHits.get(ip) || [];
-    hits = hits.filter((ts) => now - ts < REPLAY_RATE_WINDOW_MS);
-    if (hits.length >= REPLAY_RATE_MAX) {
-        replayHits.set(ip, hits);
-        return res.status(429).json({ error: 'Too many requests' });
-    }
-    hits.push(now);
-    replayHits.set(ip, hits);
-
-    const { roomId } = req.params;
-    if (typeof roomId !== 'string' || roomId.length < 1 || roomId.length > 100) {
-        return res.status(400).json({ error: 'Invalid room id' });
-    }
-
-    // Live room first, then finished reports.
-    const live = rooms.get(roomId);
-    let report = null;
-    let status = null;
-    if (live && live.interview) {
-        status = live.interview.status;
-        // Build from live state so endedAt / endReason are current.
-        report = buildInterviewReport(roomId, live);
-    } else {
-        report = finishedInterviews.get(roomId) || null;
-    }
-    if (!report) return res.status(404).json({ error: 'Interview not found' });
-
-    // Key check (timing-safe). Live rooms hold the key; finished reports keep
-    // an internal copy so the report stays fetchable after the room is gone.
-    const expectedKey = (live && live.interview)
-        ? live.interview.interviewerKey
-        : (report._interviewerKey || null);
-    const provided = req.get('x-interviewer-key');
-    if (typeof provided !== 'string' || !provided.length || !expectedKey
-        || !timingSafeEqualStr(provided, expectedKey)) {
-        return res.status(403).json({ error: 'Forbidden' });
-    }
-
-    if (status && status !== 'ended') {
-        return res.status(409).json({ error: 'Interview not finished' });
-    }
-    if (!status && report.endedAt === null) {
-        return res.status(409).json({ error: 'Interview not finished' });
-    }
-
-    // Strip the internal key field before sending.
-    const { _interviewerKey, ...clean } = report;
-    res.set('Cache-Control', 'no-store');
-    return res.json(clean);
-});
-
-app.use(express.static(path.join(__dirname, '../Frontend/dist')));
-
-app.get('/*splat', (req, res) => {
-    res.sendFile(path.join(__dirname, '../Frontend/dist', 'index.html'));
+registerApiRoutes({
+    app,
+    rooms,
+    finishedRecordings,
+    finishedInterviews,
+    buildInterviewReport,
+    staticRoot: path.join(__dirname, '../Frontend/dist'),
 });
 
 server.listen(port, () => {
