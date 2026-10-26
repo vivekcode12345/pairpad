@@ -1,0 +1,187 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - heading "Code together. Interview better." [level=1] [ref=e8]: Code together.Interview better.
+          - paragraph [ref=e9]: Real-time collaborative editor with live cursors, sandboxed execution, session replay and interview mode.
+        - generic [ref=e11]:
+          - generic [ref=e12]:
+            - generic [ref=e17]: solution.js
+            - generic [ref=e18]:
+              - generic [ref=e19]: A
+              - generic [ref=e20]: L
+          - generic [ref=e21]:
+            - generic [ref=e22]:
+              - generic [ref=e23]: "1"
+              - generic [ref=e24]: Ada
+            - generic [ref=e27]:
+              - generic [ref=e28]: "2"
+              - generic [ref=e29]: Linus
+            - generic [ref=e32]: "3"
+            - generic [ref=e35]: "4"
+            - generic [ref=e38]: "5"
+            - generic [ref=e41]: "6"
+            - generic [ref=e44]: "7"
+            - generic [ref=e47]: "8"
+            - generic [ref=e50]: "9"
+          - generic [ref=e53]: "✓ Output: 42"
+      - generic [ref=e54]:
+        - generic [ref=e55]:
+          - generic [ref=e56]:
+            - heading "Join or create a room" [level=2] [ref=e57]
+            - paragraph [ref=e58]: Collaborate in a shared live coding room.
+          - generic [ref=e59]:
+            - generic [ref=e60]:
+              - generic [ref=e61]: Your name
+              - textbox "Your name" [ref=e62]:
+                - /placeholder: Ada Lovelace
+            - generic [ref=e63]:
+              - generic [ref=e64]:
+                - generic [ref=e65]: Room ID
+                - textbox "Room ID" [ref=e66]:
+                  - /placeholder: room-id
+              - button "Generate" [ref=e67] [cursor=pointer]
+            - button "Join room" [ref=e68] [cursor=pointer]
+        - generic [ref=e69]:
+          - generic [ref=e70]:
+            - heading "Start an interview" [level=2] [ref=e71]
+            - paragraph [ref=e72]: Set up a structured coding interview with a private candidate link.
+          - generic [ref=e73]:
+            - generic [ref=e74]:
+              - generic [ref=e75]: Your name
+              - textbox "Your name" [ref=e76]:
+                - /placeholder: Interviewer name
+            - button "Create interview" [ref=e77] [cursor=pointer]
+        - generic [ref=e78]:
+          - generic [ref=e79]:
+            - heading "Watch a replay" [level=2] [ref=e80]
+            - paragraph [ref=e81]: Review a completed coding session from its room ID.
+          - generic [ref=e82]:
+            - generic [ref=e83]:
+              - generic [ref=e84]: Room ID
+              - textbox "Room ID" [ref=e85]:
+                - /placeholder: room-id
+            - button "Watch replay" [ref=e86] [cursor=pointer]
+      - generic [ref=e87]:
+        - generic [ref=e88]:
+          - text: THE WORKSPACE
+          - heading "Everything you need to code together" [level=2] [ref=e89]
+          - paragraph [ref=e90]: From live pairing to hidden-test judging, in one workspace.
+        - generic [ref=e91]:
+          - article [ref=e92]:
+            - generic [ref=e93]: "01"
+            - heading "Conflict-free live sync" [level=3] [ref=e98]
+            - paragraph [ref=e99]: Built on Yjs CRDTs. Two people typing on the same line never overwrite each other, and edits made while offline merge back automatically.
+            - generic [ref=e100]:
+              - generic [ref=e101]: const
+              - generic [ref=e102]: sync
+              - emphasis [ref=e103]: +
+              - generic [ref=e104]: merge
+          - article [ref=e105]:
+            - generic [ref=e106]: "02"
+            - heading "Live cursors & presence" [level=3] [ref=e111]
+            - paragraph [ref=e112]: See every collaborator's cursor, selection and name in their own color, and who is in the room.
+            - generic [ref=e113]:
+              - generic [ref=e116]: Ada
+              - generic [ref=e117]: Linus
+          - article [ref=e118]:
+            - generic [ref=e119]: "03"
+            - heading "Sandboxed execution" [level=3] [ref=e124]
+            - paragraph [ref=e125]: Run JavaScript, Python, C++ and Java on the server with stdin support. Nothing runs on your machine or the host.
+            - generic [ref=e126]:
+              - code [ref=e127]: "> run"
+              - strong [ref=e128]: ✓ 42
+          - article [ref=e129]:
+            - generic [ref=e130]: "04"
+            - heading "Session replay" [level=3] [ref=e136]
+            - paragraph [ref=e137]: "Every session is recorded as timestamped events. Replay it like a video: scrub, change speed, skip idle gaps, export JSON."
+          - article [ref=e143]:
+            - generic [ref=e144]: "05"
+            - heading "Interview mode" [level=3] [ref=e150]
+            - paragraph [ref=e151]: Pick a problem, set a timer, and the server judges submissions against hidden test cases. Candidates only see pass/fail verdicts.
+            - generic [ref=e152]:
+              - generic [ref=e153]: AC
+              - generic [ref=e154]: WA
+              - generic [ref=e155]: 00:42
+          - article [ref=e156]:
+            - generic [ref=e157]: "06"
+            - heading "Safe by design" [level=3] [ref=e163]
+            - paragraph [ref=e164]: Hidden tests never leave the server, payloads are size-limited, and the run and replay endpoints are rate-limited.
+      - generic [ref=e169]:
+        - generic [ref=e170]:
+          - text: A SIMPLE LOOP
+          - heading "How it works" [level=2] [ref=e171]
+        - generic [ref=e172]:
+          - article [ref=e173]:
+            - generic [ref=e174]: "1"
+            - generic [ref=e175]:
+              - heading "Create or join a room" [level=3] [ref=e176]
+              - paragraph [ref=e177]: Share the link, no signup
+          - article [ref=e178]:
+            - generic [ref=e179]: "2"
+            - generic [ref=e180]:
+              - heading "Code together" [level=3] [ref=e181]
+              - paragraph [ref=e182]: Live cursors, instant sync, run code in the room
+          - article [ref=e183]:
+            - generic [ref=e184]: "3"
+            - generic [ref=e185]:
+              - heading "Run, replay, review" [level=3] [ref=e186]
+              - paragraph [ref=e187]: Replay the session or read the interview report
+        - generic [ref=e188]:
+          - generic [ref=e189]: Built with
+          - generic [ref=e190]: React
+          - generic [ref=e191]: Yjs
+          - generic [ref=e192]: Socket.io
+          - generic [ref=e193]: Monaco Editor
+          - generic [ref=e194]: Node.js
+          - generic [ref=e195]: Express
+      - region [ref=e196]:
+        - generic [ref=e197]:
+          - text: PAIRPAD
+          - heading "Ready to code together?" [level=2] [ref=e198]
+        - generic [ref=e199]:
+          - button "Join a room" [ref=e200] [cursor=pointer]
+          - button "Start an interview" [ref=e201] [cursor=pointer]
+      - generic [ref=e202]:
+        - generic [ref=e203]:
+          - generic [ref=e205]:
+            - strong [ref=e206]: PairPad
+            - generic [ref=e207]: Code together. Interview better.
+          - navigation "Footer" [ref=e208]:
+            - link "Demo" [ref=e209] [cursor=pointer]:
+              - /url: "#demo"
+            - link "Features" [ref=e210] [cursor=pointer]:
+              - /url: "#features"
+            - link "How it works" [ref=e211] [cursor=pointer]:
+              - /url: "#how"
+            - link "Get started" [ref=e212] [cursor=pointer]:
+              - /url: "#start"
+            - link "GitHub" [ref=e213] [cursor=pointer]:
+              - /url: https://github.com/vivekcode12345
+        - generic [ref=e214]:
+          - generic [ref=e215]: Built for thoughtful technical conversations.
+          - generic [ref=e216]: All systems ready
+          - generic [ref=e218]: © 2026 PairPad
+  - link "Skip to content" [ref=e219] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner [ref=e221]:
+    - link "PairPad home" [ref=e222] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e223]: PairPad
+    - navigation "Primary" [ref=e225]:
+      - link "Demo" [ref=e226] [cursor=pointer]:
+        - /url: "#demo"
+      - link "Get started" [ref=e227] [cursor=pointer]:
+        - /url: "#start"
+      - link "Features" [ref=e228] [cursor=pointer]:
+        - /url: "#features"
+      - link "How it works" [ref=e229] [cursor=pointer]:
+        - /url: "#how"
+    - generic [ref=e230]:
+      - button "Quick actions ⌘K" [ref=e231] [cursor=pointer]:
+        - generic [ref=e235]: Quick actions
+        - generic [ref=e236]: ⌘K
+      - link "GitHub repository" [ref=e237] [cursor=pointer]:
+        - /url: https://github.com/vivekcode12345
+      - text: Open navigation menu
