@@ -86,6 +86,78 @@ PairPad/
 └── README.md
 ```
 
+### System design
+
+```mermaid
+flowchart LR
+  Browser[Browser]
+  Home[Home / App Router]
+  Room[Room Workspace]
+  Interview[Interview Workspace]
+  Replay[Replay Viewer]
+  Socket[Socket.IO connection]
+  Server[Backend server]
+  Rooms[(In-memory rooms)]
+  Yjs[Yjs document + awareness]
+  ReplayStore[(Finished recordings)]
+  Reports[(Finished interview reports)]
+  Api[Express API routes]
+  Wandbox[Wandbox execution API]
+
+  Browser --> Home
+  Home --> Room
+  Home --> Interview
+  Home --> Replay
+  Room <--> Socket
+  Interview <--> Socket
+  Socket <--> Server
+  Server <--> Rooms
+  Rooms <--> Yjs
+  Server --> ReplayStore
+  Server --> Reports
+  Replay --> Api
+  Interview --> Api
+  Api --> ReplayStore
+  Api --> Reports
+  Server --> Wandbox
+```
+
+### Collaboration flow
+
+```mermaid
+sequenceDiagram
+  participant UserA as User A
+  participant Client as React client
+  participant Server as Backend
+  participant UserB as User B
+  participant Sandbox as Wandbox
+
+  UserA->>Client: Join room
+  Client->>Server: join(roomId, userName)
+  Server-->>Client: yjs-init + room participants
+  Server-->>UserB: user-joined + room participants
+  UserA->>Client: Edit code or awareness state
+  Client->>Server: yjs-update / awareness-update
+  Server-->>UserB: Relayed collaboration update
+  UserA->>Client: Run code
+  Client->>Server: compileCode(input)
+  Server->>Sandbox: Execute current Yjs document
+  Sandbox-->>Server: Program output
+  Server-->>Client: codeResponse(output)
+  Server->>Server: Record room event
+```
+
+### Module ownership
+
+| Area | Owns | Main entry points |
+| --- | --- | --- |
+| Routing | Query-based screen selection | `Frontend/src/App.jsx` |
+| Room UI | Editor, participants, video controls, and panels | `Frontend/src/Room.jsx`, `Frontend/src/components/` |
+| Collaboration | Socket.IO events and Yjs synchronization | `Backend/index.js`, `Frontend/src/yjsProvider.js` |
+| HTTP API | Replay, interview reports, and static frontend delivery | `Backend/routes/api.js` |
+| Execution | Code execution and interview judging requests | `Backend/services/wandbox.js` |
+| Limits and validation | Environment limits, payload validation, and timing-safe keys | `Backend/config/constants.js`, `Backend/utils/validation.js` |
+
 ### Frontend
 
 - React 19
