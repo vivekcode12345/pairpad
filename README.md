@@ -55,6 +55,53 @@ Interview sessions use the existing query format:
 /?interview=<room-id>
 ```
 
+## Video calls
+
+Video calls are peer-to-peer WebRTC mesh sessions established through Socket.IO signaling. Each participant connects to every other peer; the mesh scales well for about 4-5 participants. The UI provides mic and camera toggles, mute indicators, and a "Leave call" button.
+
+- **How to start**: Open two (or more) tabs with the same `?room=<id>&name=<name>` query, click "Enable video" (or "Join call"), and allow microphone/camera permission.
+- **TURN configuration**: The backend reads `TURN_URLS` (comma-separated), `TURN_SECRET` (enables short-lived credentials), and `TURN_USERNAME`/`TURN_CREDENTIAL` (static fallback). By default only STUN is provided via `GET /api/ice-config`. To use TURN, set the env variables and restart the backend; the ice-config endpoint will then include TURN server entries with appropriate credentials.
+- **How to test**: Open two tabs in the same room with headphones to avoid feedback; then try two different network profiles (e.g., home Wi-Fi vs mobile hotspot) to verify TURN traversal. The localStream should have `videoWidth > 0` once the remote peer's video track is received.
+
+### Socket events (WebRTC mesh)
+
+The following Socket.IO events are used for video call signaling. All names are confirmed against `Backend/index.js`:
+
+| Event | Payload | Description |
+|---|---|---|
+| `video-join` | `{ audio: boolean, video: boolean }` | Client joins the call; server replies with `video-peers` and broadcasts `video-peer-joined` to others |
+| `video-leave` | (none) | Client leaves the call; server broadcasts `video-peer-left` for the departing member |
+| `video-state` | `{ audio: boolean, video: boolean }` | Updates the caller's audio/video flags; server broadcasts `video-peer-state` to others |
+| `video-peers` | `{ id, name, audio, video }[]` | Reply to `video-join` listing all current call members |
+| `video-peer-joined` | `{ id, name, audio, video }` | Broadcast when a new member joins the call (others' side) |
+| `video-peer-left` | `{ id }` | Broadcast when a member leaves or disconnects |
+| `video-peer-state` | `{ id, audio, video }` | Broadcast when a member toggles mic/camera |
+
+Real-time room and interview operations use Socket.IO rather than REST endpoints.
+
+### HTTP API (updated)
+
+The frontend also uses these HTTP endpoints for post-session data:
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/replay/:roomId` | Fetch a finished room recording |
+| `GET` | `/api/interview/:roomId/report` | Fetch a finished interview report |
+| `GET` | `/api/ice-config` | ICE configuration (STUN by default; TURN when `TURN_URLS`/`TURN_SECRET` are set) |
+
+Security and resource limits
+
+PairPad includes server-side safeguards for the existing workflows:
+
+- Code and binary update payload limits.
+- Replay event and recording-size limits.
+- Replay and report rate limiting.
+- Interview submission limits and cooldowns.
+- Hidden interview tests remain server-side.
+- Input and output are bounded before being returned to clients.
+
+Code execution depends on the public Wandbox service. Its availability and startup capacity can affect execution and judging results; infrastructure failures are handled separately from ordinary compile or answer failures.
+
 ## Architecture
 
 PairPad is a small full-stack JavaScript application:

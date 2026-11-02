@@ -71,3 +71,7 @@ desktop.ini
 *.local
 tmp/
 temp/
+
+# Playwright artifacts
+.playwright-cli/
+playwright-report/

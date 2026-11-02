@@ -24,6 +24,8 @@ import {
     MAX_INTERVIEW_DURATION_MS,
     ALLOW_SHORT,
     JUDGE_MAX_ATTEMPTS,
+    VIDEO_RATE_MAX,
+    VIDEO_RATE_WINDOW_MS,
 } from './config/constants.js';
 import { runOnWandbox, compileWithWandbox } from './services/wandbox.js';
 import { registerApiRoutes } from './routes/api.js';
@@ -73,6 +75,21 @@ const rooms = new Map();
 const finishedRecordings = new Map();
 // Finished interview reports kept after a room is deleted, keyed by roomId.
 const finishedInterviews = new Map();
+// Per-socket video event rate limiting: socketId -> timestamps.
+const videoHits = new Map();
+
+const allowVideoRequest = (socketId) => {
+    const now = Date.now();
+    let hits = videoHits.get(socketId) || [];
+    hits = hits.filter((timestamp) => now - timestamp < VIDEO_RATE_WINDOW_MS);
+    if (hits.length >= VIDEO_RATE_MAX) {
+        videoHits.set(socketId, hits);
+        return false;
+    }
+    hits.push(now);
+    videoHits.set(socketId, hits);
+    return true;
+};
 
 function createRecording(roomId) {
     return {
@@ -498,6 +515,14 @@ function leave(socket) {
 
     const userName = socket.currentUser;
     room.users.delete(socket.id);
+
+    // Video call cleanup: if this socket was in the call, remove it and notify peers.
+    const videoEntry = room.video.get(socket.id);
+    if (videoEntry) {
+        room.video.delete(socket.id);
+        io.to(roomId).emit("video-peer-left", { id: socket.id });
+    }
+
     if (room.recording && userName) {
         recordEvent(room.recording, {
             t: Date.now() - room.recording.startedAt,
@@ -676,6 +701,7 @@ function createRoom(cleanRoomId, initialLanguage = 'python') {
 
     const room = {
         users: new Map(),
+        video: new Map(), // socketId -> { name, audio, video }
         ydoc,
         awareness,
         language: initialLanguage,
@@ -1111,31 +1137,143 @@ socket.on("yjs-update", (data) => {
         }
     });
 
+    // ----- Video call signaling -----
+
+    // Validate an SDP offer/answer payload: object with string type and string sdp (<=20000 chars).
+    const isValidOfferAnswer = (payload) => {
+        if (!payload || typeof payload !== 'object') return false;
+        if (typeof payload.type !== 'string' || typeof payload.sdp !== 'string') return false;
+        return payload.sdp.length <= 20000;
+    };
+
+    // Validate an ICE candidate: object, serialized size <= 2000 bytes.
+    const isValidIceCandidate = (payload) => {
+        if (!payload || typeof payload !== 'object') return false;
+        try {
+            return Buffer.byteLength(JSON.stringify(payload)) <= 2000;
+        } catch {
+            return false;
+        }
+    };
+
+    // Target must be a string and a member of the same room's video call (not just the room).
+    const isValidVideoTarget = (room, targetId) => {
+        if (typeof targetId !== 'string') return false;
+        return room.video.has(targetId);
+    };
+
+    socket.on("video-join", (payload) => {
+        try {
+            if (!allowVideoRequest(socket.id)) return;
+            const roomId = socket.currentRoom;
+            if (!roomId || !rooms.has(roomId)) return;
+            const room = rooms.get(roomId);
+            if (!payload || typeof payload !== 'object') return;
+            const audio = typeof payload.audio === 'boolean' ? payload.audio : false;
+            const video = typeof payload.video === 'boolean' ? payload.video : false;
+
+            room.video.set(socket.id, { name: socket.currentUser || '', audio, video });
+
+            // Reply to the joiner with the current peers (everyone else already in the call).
+            const peers = [];
+            for (const [peerId, entry] of room.video) {
+                if (peerId !== socket.id) {
+                    peers.push({ id: peerId, name: entry.name, audio: entry.audio, video: entry.video });
+                }
+            }
+            socket.emit("video-peers", peers);
+
+            // The joiner is the initiator: it creates offers to everyone already in the call.
+            // Broadcast to the rest of the room so they can answer.
+            socket.to(roomId).emit("video-peer-joined", {
+                id: socket.id,
+                name: socket.currentUser || '',
+                audio,
+                video,
+            });
+        } catch {
+            /* never throw */
+        }
+    });
+
+    socket.on("video-leave", () => {
+        try {
+            if (!allowVideoRequest(socket.id)) return;
+            const roomId = socket.currentRoom;
+            if (!roomId || !rooms.has(roomId)) return;
+            const room = rooms.get(roomId);
+            if (room.video.has(socket.id)) {
+                room.video.delete(socket.id);
+                socket.to(roomId).emit("video-peer-left", { id: socket.id });
+            }
+        } catch {
+            /* never throw */
+        }
+    });
+
+    socket.on("video-state", (payload) => {
+        try {
+            if (!allowVideoRequest(socket.id)) return;
+            const roomId = socket.currentRoom;
+            if (!roomId || !rooms.has(roomId)) return;
+            const room = rooms.get(roomId);
+            if (!payload || typeof payload !== 'object') return;
+            if (!room.video.has(socket.id)) return;
+            const audio = typeof payload.audio === 'boolean' ? payload.audio : room.video.get(socket.id).audio;
+            const video = typeof payload.video === 'boolean' ? payload.video : room.video.get(socket.id).video;
+            room.video.set(socket.id, { name: socket.currentUser || '', audio, video });
+            socket.to(roomId).emit("video-peer-state", { id: socket.id, audio, video });
+        } catch {
+            /* never throw */
+        }
+    });
+
     socket.on("video-offer", (payload) => {
-        const roomId = socket.currentRoom;
-        const targetId = payload && typeof payload === 'object' ? payload.targetId : null;
-        if (!roomId || !rooms.has(roomId) || typeof targetId !== 'string') return;
-        if (!rooms.get(roomId).users.has(targetId)) return;
-        io.to(targetId).emit("video-offer", { fromId: socket.id, offer: payload.offer });
+        try {
+            if (!allowVideoRequest(socket.id)) return;
+            const roomId = socket.currentRoom;
+            if (!roomId || !rooms.has(roomId)) return;
+            const room = rooms.get(roomId);
+            const targetId = payload && typeof payload === 'object' ? payload.targetId : null;
+            if (!isValidVideoTarget(room, targetId)) return;
+            if (!isValidOfferAnswer(payload.offer)) return;
+            io.to(targetId).emit("video-offer", { fromId: socket.id, offer: payload.offer });
+        } catch {
+            /* never throw */
+        }
     });
 
     socket.on("video-answer", (payload) => {
-        const roomId = socket.currentRoom;
-        const targetId = payload && typeof payload === 'object' ? payload.targetId : null;
-        if (!roomId || !rooms.has(roomId) || typeof targetId !== 'string') return;
-        if (!rooms.get(roomId).users.has(targetId)) return;
-        io.to(targetId).emit("video-answer", { fromId: socket.id, answer: payload.answer });
+        try {
+            if (!allowVideoRequest(socket.id)) return;
+            const roomId = socket.currentRoom;
+            if (!roomId || !rooms.has(roomId)) return;
+            const room = rooms.get(roomId);
+            const targetId = payload && typeof payload === 'object' ? payload.targetId : null;
+            if (!isValidVideoTarget(room, targetId)) return;
+            if (!isValidOfferAnswer(payload.answer)) return;
+            io.to(targetId).emit("video-answer", { fromId: socket.id, answer: payload.answer });
+        } catch {
+            /* never throw */
+        }
     });
 
     socket.on("video-ice-candidate", (payload) => {
-        const roomId = socket.currentRoom;
-        const targetId = payload && typeof payload === 'object' ? payload.targetId : null;
-        if (!roomId || !rooms.has(roomId) || typeof targetId !== 'string') return;
-        if (!rooms.get(roomId).users.has(targetId)) return;
-        io.to(targetId).emit("video-ice-candidate", {
-            fromId: socket.id,
-            candidate: payload.candidate,
-        });
+        try {
+            if (!allowVideoRequest(socket.id)) return;
+            const roomId = socket.currentRoom;
+            if (!roomId || !rooms.has(roomId)) return;
+            const room = rooms.get(roomId);
+            const targetId = payload && typeof payload === 'object' ? payload.targetId : null;
+            if (!isValidVideoTarget(room, targetId)) return;
+            if (!isValidIceCandidate(payload.candidate)) return;
+            io.to(targetId).emit("video-ice-candidate", {
+                fromId: socket.id,
+                candidate: payload.candidate,
+            });
+        } catch {
+            /* never throw */
+        }
     });
 
     socket.on("languageChange", (payload) => {

@@ -46,3 +46,31 @@ export const ALLOWED_DURATIONS_MIN = [15, 30, 45, 60, 90];
 export const MAX_INTERVIEW_DURATION_MS = Math.max(...ALLOWED_DURATIONS_MIN) * 60 * 1000;
 export const ALLOW_SHORT = process.env.INTERVIEW_ALLOW_SHORT === '1';
 export const JUDGE_MAX_ATTEMPTS = 3;
+
+export const VIDEO_RATE_MAX = (() => {
+    const n = parseInt(process.env.VIDEO_RATE_MAX, 10);
+    return Number.isFinite(n) && n > 0 ? n : 200;
+})();
+export const VIDEO_RATE_WINDOW_MS = (() => {
+    const n = parseInt(process.env.VIDEO_RATE_WINDOW_MS, 10);
+    return Number.isFinite(n) && n > 0 ? n : 10000;
+})();
+
+// ICE / TURN configuration
+export const ICE_RATE_MAX = (() => {
+    const n = parseInt(process.env.ICE_RATE_MAX, 10);
+    return Number.isFinite(n) && n > 0 ? n : 30;
+})();
+export const ICE_RATE_WINDOW_MS = (() => {
+    const n = parseInt(process.env.ICE_RATE_WINDOW_MS, 10);
+    return Number.isFinite(n) && n > 0 ? n : 60000;
+})();
+export const TURN_URLS = (() => {
+    const raw = process.env.TURN_URLS;
+    if (!raw || typeof raw !== 'string') return null;
+    return raw.split(',').map((u) => u.trim()).filter(Boolean);
+})();
+export const TURN_SECRET = process.env.TURN_SECRET || null;
+export const TURN_USERNAME = process.env.TURN_USERNAME || null;
+export const TURN_CREDENTIAL = process.env.TURN_CREDENTIAL || null;
+export const TURN_CREDENTIAL_TTL_MS = 60 * 60 * 1000; // 1 hour
