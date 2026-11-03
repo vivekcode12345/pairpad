@@ -21,6 +21,7 @@ function humanErrorMessage(error) {
 export function useCall({ socket, participants }) {
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState(null);
+  const [stopReason, setStopReason] = useState(null);
   const [localStream, setLocalStream] = useState(null);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
@@ -35,6 +36,19 @@ export function useCall({ socket, participants }) {
   const iceRestartTimers = useRef(new Map());
   const isInCallRef = useRef(false);
   const mountedRef = useRef(true);
+  const participantsRef = useRef(participants);
+  const micOnRef = useRef(micOn);
+  const camOnRef = useRef(camOn);
+  const peersRef = useRef(peers);
+  const leaveCallRef = useRef(null);
+  const trackCleanupRef = useRef([]);
+
+  useEffect(() => {
+    participantsRef.current = participants;
+    micOnRef.current = micOn;
+    camOnRef.current = camOn;
+    peersRef.current = peers;
+  }, [participants, micOn, camOn, peers]);
 
   const closePeer = useCallback((id) => {
     const peer = peerConnections.current.get(id);
@@ -171,10 +185,56 @@ export function useCall({ socket, participants }) {
     return peer;
   }, [socket, updatePeerStream, updatePeerConnection]);
 
+  const clearTrackListeners = useCallback(() => {
+    trackCleanupRef.current.forEach((cleanup) => cleanup());
+    trackCleanupRef.current = [];
+  }, []);
+
+  const reportCallError = useCallback((error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!mountedRef.current) return;
+    setError(`Call ended: ${message}`);
+    setStopReason(`Call ended: ${message}`);
+  }, []);
+
+  const leaveCall = useCallback((reason = null) => {
+    const wasInCall = isInCallRef.current;
+    const hasResources = wasInCall || localStreamRef.current || peerConnections.current.size > 0;
+    if (!hasResources) return;
+
+    if (wasInCall) socket.emit('video-leave');
+    clearTrackListeners();
+
+    const stream = localStreamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+    localStreamRef.current = null;
+
+    peerConnections.current.forEach((_, id) => {
+      closePeer(id);
+    });
+
+    isInCallRef.current = false;
+    if (!mountedRef.current) return;
+    setLocalStream(null);
+    setPeers({});
+    setMicOn(true);
+    setCamOn(true);
+    setStatus('idle');
+    setError(reason);
+    if (reason) setStopReason(reason);
+  }, [socket, closePeer, clearTrackListeners]);
+
+  useEffect(() => {
+    leaveCallRef.current = leaveCall;
+  }, [leaveCall]);
+
   const joinCall = useCallback(async () => {
     if (isInCallRef.current) return;
     setStatus('starting');
     setError(null);
+    setStopReason(null);
 
     let iceServers = DEFAULT_ICE_SERVERS;
     try {
@@ -220,43 +280,36 @@ export function useCall({ socket, participants }) {
     }
 
     localStreamRef.current = stream;
+    clearTrackListeners();
+    stream.getTracks().forEach((track) => {
+      const onEnded = () => {
+        if (isInCallRef.current) {
+          leaveCallRef.current?.('Camera stopped: another app or tab took the device');
+        }
+      };
+      track.addEventListener('ended', onEnded);
+      trackCleanupRef.current.push(() => track.removeEventListener('ended', onEnded));
+    });
     setLocalStream(stream);
     setMicOn(true);
     setCamOn(stream.getVideoTracks().length > 0);
     setStatus('in-call');
     isInCallRef.current = true;
 
-    socket.emit('video-join', { audio: micOn, video: camOn });
+    try {
+      socket.emit('video-join', {
+        audio: stream.getAudioTracks().length > 0,
+        video: stream.getVideoTracks().length > 0,
+      });
 
-    participants.forEach((participant) => {
-      if (participant.id === socket.id) return;
-      createPeer(participant.id, participant.name, participant.audio || false, participant.video || false, true);
-    });
-  }, [socket, participants, micOn, camOn, createPeer]);
-
-  const leaveCall = useCallback(() => {
-    if (!isInCallRef.current && status === 'idle') return;
-
-    socket.emit('video-leave');
-
-    const stream = localStreamRef.current;
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+      participantsRef.current.forEach((participant) => {
+        if (participant.id === socket.id) return;
+        createPeer(participant.id, participant.name, participant.audio || false, participant.video || false, true);
+      });
+    } catch (error) {
+      reportCallError(error);
     }
-    localStreamRef.current = null;
-    setLocalStream(null);
-
-    peerConnections.current.forEach((_, id) => {
-      closePeer(id);
-    });
-
-    setPeers({});
-    setMicOn(true);
-    setCamOn(true);
-    setStatus('idle');
-    setError(null);
-    isInCallRef.current = false;
-  }, [socket, status, closePeer]);
+  }, [socket, createPeer, clearTrackListeners, reportCallError]);
 
   const toggleMic = useCallback(() => {
     const next = !micOn;
@@ -280,7 +333,11 @@ export function useCall({ socket, participants }) {
       if (!Array.isArray(peerList)) return;
       peerList.forEach((peer) => {
         if (peer.id === socket.id) return;
-        createPeer(peer.id, peer.name, peer.audio || false, peer.video || false, true);
+        try {
+          createPeer(peer.id, peer.name, peer.audio || false, peer.video || false, true);
+        } catch (error) {
+          reportCallError(error);
+        }
       });
     };
 
@@ -314,10 +371,13 @@ export function useCall({ socket, participants }) {
           .then((answer) => {
             socket.emit('video-answer', { targetId: fromId, answer });
           })
-          .catch(() => closePeer(fromId));
+          .catch((error) => {
+            closePeer(fromId);
+            reportCallError(error);
+          });
         return;
       }
-      const existing = peers[fromId];
+      const existing = peersRef.current[fromId];
       const peer = createPeer(fromId, existing ? existing.name : '', existing ? existing.audio : false, existing ? existing.video : false, false);
       if (!peer) return;
       peer.setRemoteDescription(offer)
@@ -326,7 +386,10 @@ export function useCall({ socket, participants }) {
         .then((answer) => {
           socket.emit('video-answer', { targetId: fromId, answer });
         })
-        .catch(() => closePeer(fromId));
+        .catch((error) => {
+          closePeer(fromId);
+          reportCallError(error);
+        });
     };
 
     const onVideoAnswer = (payload) => {
@@ -334,7 +397,10 @@ export function useCall({ socket, participants }) {
       const peer = peerConnections.current.get(payload.fromId);
       if (!peer) return;
       remoteDescriptionsSet.current.add(payload.fromId);
-      peer.setRemoteDescription(payload.answer).catch(() => closePeer(payload.fromId));
+      peer.setRemoteDescription(payload.answer).catch((error) => {
+        closePeer(payload.fromId);
+        reportCallError(error);
+      });
     };
 
     const onVideoIceCandidate = (payload) => {
@@ -349,7 +415,7 @@ export function useCall({ socket, participants }) {
       });
       setPeers({});
       setTimeout(() => {
-        socket.emit('video-join', { audio: micOn, video: camOn });
+        socket.emit('video-join', { audio: micOnRef.current, video: camOnRef.current });
       }, 0);
     };
 
@@ -372,23 +438,24 @@ export function useCall({ socket, participants }) {
       socket.off('video-ice-candidate', onVideoIceCandidate);
       socket.off('connect', onSocketConnect);
     };
-  }, [socket, createPeer, closePeer, updatePeerFlag, micOn, camOn, addQueuedCandidate, peers]);
+  }, [socket, createPeer, closePeer, updatePeerFlag, addQueuedCandidate, reportCallError]);
 
-  // ----- Lifecycle: auto-leave on unmount -----
+  // ----- Lifecycle: auto-leave only on actual hook unmount -----
   useEffect(() => {
     mountedRef.current = true;
     const timers = iceRestartTimers.current;
     return () => {
       mountedRef.current = false;
-      leaveCall();
+      leaveCallRef.current?.();
       timers.forEach((timer) => clearTimeout(timer));
       timers.clear();
     };
-  }, [leaveCall]);
+  }, []);
 
   return {
     status,
     error,
+    stopReason,
     localStream,
     micOn,
     camOn,

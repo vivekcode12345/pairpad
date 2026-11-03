@@ -27,7 +27,7 @@ function VideoTile({ name, stream, muted = false, local = false, videoEnabled = 
 }
 
 export default function VideoRoom({ socket, userName, participants }) {
-  const { status, error, localStream, micOn, camOn, peers, joinCall, leaveCall, toggleMic, toggleCam } = useCall({
+  const { status, error, stopReason, localStream, micOn, camOn, peers, joinCall, leaveCall, toggleMic, toggleCam } = useCall({
     socket,
     userName,
     participants,
@@ -82,6 +82,7 @@ export default function VideoRoom({ socket, userName, participants }) {
           </div>
         )}
       </div>
+      {stopReason && <small className="cc-video-stop-reason">{stopReason}</small>}
     </section>
   );
 }
