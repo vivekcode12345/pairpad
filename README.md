@@ -4,6 +4,49 @@ PairPad is a real-time collaborative coding workspace for live pairing, technica
 
 Work together in the same editor, see collaborators as they type, run code without executing it on your machine, and review completed sessions afterward.
 
+> A full-stack collaborative IDE built with React, Node.js, Socket.IO, Yjs, Monaco Editor, WebRTC, and Wandbox.
+
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=111827)](https://react.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Socket.IO](https://img.shields.io/badge/Socket.IO-4-black?logo=socket.io)](https://socket.io/)
+[![Yjs](https://img.shields.io/badge/Yjs-CRDT-7C3AED)](https://yjs.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+
+## At a glance
+
+PairPad solves the problem of coordinating live coding sessions in one browser workspace:
+
+- **Collaborate** in the same Monaco-powered editor with conflict-free Yjs synchronization.
+- **Interview** with private interviewer/candidate flows, timed sessions, submissions, and hidden tests.
+- **Execute** JavaScript, Python, C++, and Java through a server-side Wandbox integration.
+- **Call** teammates through peer-to-peer WebRTC video with Socket.IO signaling and optional TURN.
+- **Replay** recorded coding sessions, including document changes, joins, leaves, language changes, runs, and interview marks.
+
+## What makes it resume-worthy
+
+- Designed a real-time multi-user architecture using **Socket.IO rooms**, **Yjs CRDT updates**, and **awareness state** for low-conflict collaborative editing.
+- Built a complete interview workflow with role-aware authorization, interviewer-only configuration, timed sessions, submission cooldowns, hidden tests, and post-session reports.
+- Added a server-side execution boundary so user code runs through a sandbox service instead of directly on the application host.
+- Implemented replay recording with bounded event counts, byte limits, retention windows, rate limiting, and graceful handling of live/truncated recordings.
+- Added WebRTC mesh video calling with mic/camera state, peer lifecycle handling, ICE/TURN configuration, and per-socket signaling limits.
+- Kept the frontend modular with query-based routing, reusable UI components, Monaco editor integration, and shared design tokens.
+
+## Core stack
+
+| Layer | Technologies |
+| --- | --- |
+| Frontend | React 19, Vite, Monaco Editor, y-monaco, Socket.IO Client |
+| Collaboration | Yjs CRDT, y-protocols awareness, Socket.IO |
+| Calls | WebRTC peer connections, Socket.IO signaling, STUN/TURN |
+| Backend | Node.js, Express 5, Socket.IO |
+| Execution | Axios + Wandbox compiler/execution API |
+| Delivery | Vite production build, Express static hosting and SPA fallback |
+
+## Resume-ready project description
+
+> **PairPad — Real-time collaborative coding and interview platform**
+> Built a full-stack browser IDE with React, Node.js, Socket.IO, Yjs CRDT synchronization, Monaco Editor, WebRTC video calling, sandboxed multi-language execution, interview workflows, and session replay. Implemented role-aware interview authorization, hidden-test judging, bounded replay storage, rate limiting, ICE/TURN configuration, and responsive reusable UI components.
+
 ## Why PairPad
 
 - **Collaborative rooms** — Join a room with a name and room ID, then edit together in real time.

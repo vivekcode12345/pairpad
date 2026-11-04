@@ -122,6 +122,10 @@
   margin-top: var(--space-3);
 }
 
+.replay-error-actions button:last-child {
+  display: none;
+}
+
 @media (max-width: 480px) {
   .replay-topbar {
     gap: var(--space-2);

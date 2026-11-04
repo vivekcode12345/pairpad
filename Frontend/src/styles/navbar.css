@@ -21,7 +21,7 @@
 .cc-command-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: start center; padding-top: 18vh; background: rgb(5 7 12 / 62%); backdrop-filter: blur(5px); }
 .cc-command-palette { width: min(560px, 92vw); overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-lg); animation: cc-palette-in 140ms ease; }
 .cc-command-search { display: flex; align-items: center; gap: 10px; padding: 16px; border-bottom: 1px solid var(--border); color: var(--text-muted); }
-.cc-command-search input { width: 100%; border: 0; outline: 0; color: var(--text); background: transparent; }
+.cc-command-search input { width: 100%; border: 0; color: var(--text); background: transparent; }
 .cc-command-list { max-height: 390px; overflow: auto; padding: 8px; }
 .cc-command-row { display: flex; width: 100%; align-items: center; gap: 12px; padding: 11px 12px; border: 0; border-radius: 9px; color: var(--text); background: transparent; text-align: left; }
 .cc-command-row:hover, .cc-command-row.active { background: var(--surface-3); }
