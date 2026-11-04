@@ -24,20 +24,24 @@ export function registerApiRoutes({ app, rooms, finishedRecordings, finishedInte
         const now = Date.now();
         let hits = hitsMap.get(ip) || [];
         hits = hits.filter((timestamp) => now - timestamp < windowMs);
+        if (hits.length === 0) hitsMap.delete(ip);
         if (hits.length >= max) {
             hitsMap.set(ip, hits);
-            return false;
+            return {
+                allowed: false,
+                retryAfter: Math.max(1, Math.ceil((hits[0] + windowMs - now) / 1000)),
+            };
         }
         hits.push(now);
         hitsMap.set(ip, hits);
-        return true;
+        return { allowed: true, retryAfter: 0 };
     };
 
     const allowReplayRequest = makeRateLimiter(replayHits, REPLAY_RATE_MAX, REPLAY_RATE_WINDOW_MS);
     const allowIceRequest = makeRateLimiter(iceHits, ICE_RATE_MAX, ICE_RATE_WINDOW_MS);
 
     app.get('/api/ice-config', (req, res) => {
-        if (!allowIceRequest(req)) {
+        if (!allowIceRequest(req).allowed) {
             return res.status(429).json({ error: 'Too many requests' });
         }
 
@@ -74,8 +78,8 @@ export function registerApiRoutes({ app, rooms, finishedRecordings, finishedInte
     });
 
     app.get('/api/replay/:roomId', (req, res) => {
-        if (!allowReplayRequest(req)) return res.status(429).json({ error: 'Too many requests' });
-        if (!allowRequest(req)) return res.status(429).json({ error: 'Too many requests' });
+        const limit = allowReplayRequest(req);
+        if (!limit.allowed) return res.set('Retry-After', String(limit.retryAfter)).status(429).json({ error: 'Too many requests' });
         const { roomId } = req.params;
         if (typeof roomId !== 'string' || roomId.length < 1 || roomId.length > 100) {
             return res.status(400).json({ error: 'Invalid room id' });
@@ -96,7 +100,8 @@ export function registerApiRoutes({ app, rooms, finishedRecordings, finishedInte
     });
 
     app.get('/api/interview/:roomId/report', (req, res) => {
-        if (!allowRequest(req)) return res.status(429).json({ error: 'Too many requests' });
+        const limit = allowReplayRequest(req);
+        if (!limit.allowed) return res.set('Retry-After', String(limit.retryAfter)).status(429).json({ error: 'Too many requests' });
         const { roomId } = req.params;
         if (typeof roomId !== 'string' || roomId.length < 1 || roomId.length > 100) {
             return res.status(400).json({ error: 'Invalid room id' });

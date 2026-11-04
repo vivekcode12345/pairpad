@@ -3,8 +3,10 @@ import { Editor } from '@monaco-editor/react';
 import * as Y from 'yjs';
 
 import { HomeLink } from './components/ui';
+import { normalizeRoomId, validateRoomId } from './utils/roomId';
 import './monacoSetup';
 import './App.css';
+import './styles/replay-errors.css';
 
 const IDLE_GAP_MAX = 2000;
 const SPEEDS = [1, 2, 4, 8];
@@ -58,9 +60,20 @@ function describeEvent(ev) {
   }
 }
 
+function displayRoomId(id) {
+  return id.length > 40 ? `${id.slice(0, 39)}…` : id;
+}
+
 const Replay = ({ roomId }) => {
-  const [status, setStatus] = useState('loading'); // loading | error | ready
-  const [error, setError] = useState('');
+  const initialId = normalizeRoomId(roomId);
+  const initialValidation = validateRoomId(initialId);
+  const [status, setStatus] = useState(initialValidation.ok ? 'loading' : 'error'); // loading | error | ready
+  const [errorInfo, setErrorInfo] = useState(initialValidation.ok ? null : { kind: 'invalid' });
+  const [slowLoading, setSlowLoading] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
+  const [retryAfter, setRetryAfter] = useState(0);
+  const [replayInput, setReplayInput] = useState(normalizeRoomId(roomId));
+  const [replayInputError, setReplayInputError] = useState('');
   const [recording, setRecording] = useState(null);
   const [timeline, setTimeline] = useState([]);
   const [total, setTotal] = useState(0);
@@ -85,6 +98,7 @@ const Replay = ({ roomId }) => {
   const playingRef = useRef(false);
   const rafRef = useRef(0);
   const lastTsRef = useRef(0);
+  const errorHeadingRef = useRef(null);
 
   useEffect(() => {
     speedRef.current = speed;
@@ -195,19 +209,46 @@ const Replay = ({ roomId }) => {
     rafRef.current = requestAnimationFrame(loop);
   }, [resetDoc, applyUpTo, upperBound, syncDisplay]);
 
-  // Fetch the recording once and prepare the timeline.
-  // (Initial state is already status='loading', error=''.)
+  const loadReplay = useCallback((id, signal) => {
+    const validation = validateRoomId(id);
+    if (!validation.ok) {
+      return Promise.reject({ kind: 'invalid', message: validation.message });
+    }
+    return fetch(`/api/replay/${encodeURIComponent(id)}`, { signal })
+      .then(async (res) => {
+        let data;
+        try {
+          data = await res.json();
+        } catch {
+          data = undefined;
+        }
+        if (!res.ok) {
+          const retryHeader = Number.parseInt(res.headers.get('Retry-After') || '', 10);
+          throw {
+            kind: res.status === 400 ? 'invalid' : res.status === 404 ? 'not-found' : res.status === 429 ? 'rate-limit' : res.status >= 500 ? 'server' : 'network',
+            retryAfter: Number.isFinite(retryHeader) ? retryHeader : 15,
+            status: res.status,
+            data,
+          };
+        }
+        return data;
+      });
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/replay/${encodeURIComponent(roomId)}`)
-      .then((res) =>
-        res.json().then((data) => ({ ok: res.ok, status: res.status, data }))
-      )
-      .then(({ ok, status: code, data }) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const slowId = setTimeout(() => setSlowLoading(true), 5000);
+    const validation = validateRoomId(normalizeRoomId(roomId));
+    if (!validation.ok) {
+      clearTimeout(timeoutId);
+      clearTimeout(slowId);
+      return () => {};
+    }
+    loadReplay(normalizeRoomId(roomId), controller.signal)
+      .then((data) => {
         if (cancelled) return;
-        if (!ok) {
-          throw new Error((data && data.error) || `Request failed (${code})`);
-        }
         const events = (data && data.events) || [];
         const built = buildTimeline(events);
         timelineRef.current = built.timeline;
@@ -224,13 +265,42 @@ const Replay = ({ roomId }) => {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err && err.message ? err.message : 'Failed to load');
+        if (err?.name === 'AbortError') {
+          setErrorInfo({ kind: 'server', message: 'Couldn’t reach the server' });
+        } else if (err?.kind) {
+          setErrorInfo(err);
+          if (err.kind === 'rate-limit') setRetryAfter(err.retryAfter);
+        } else {
+          setErrorInfo({ kind: 'server', message: 'Couldn’t reach the server' });
+        }
         setStatus('error');
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
+        clearTimeout(slowId);
       });
     return () => {
       cancelled = true;
+      controller.abort();
+      clearTimeout(timeoutId);
+      clearTimeout(slowId);
     };
-  }, [roomId, resetDoc, applyUpTo, upperBound, syncDisplay]);
+  }, [roomId, retryNonce, loadReplay, resetDoc, applyUpTo, upperBound, syncDisplay]);
+
+  useEffect(() => {
+    if (status !== 'error') return undefined;
+    document.title = errorInfo?.kind === 'not-found'
+      ? `No recording found for ${displayRoomId(normalizeRoomId(roomId))}`
+      : 'Replay unavailable — PairPad';
+    errorHeadingRef.current?.focus();
+    return () => { document.title = 'PairPad'; };
+  }, [status, errorInfo, roomId]);
+
+  useEffect(() => {
+    if (retryAfter <= 0) return undefined;
+    const timer = setInterval(() => setRetryAfter((value) => Math.max(0, value - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [retryAfter]);
 
   // Cleanup on unmount: stop the animation frame and destroy the Y.Doc.
   useEffect(() => {
@@ -269,7 +339,30 @@ const Replay = ({ roomId }) => {
   };
 
   const goBack = () => {
-    window.location.href = '/';
+    window.history.pushState({}, '', '/');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
+  const watchAnother = (event) => {
+    event.preventDefault();
+    const id = normalizeRoomId(replayInput);
+    const validation = validateRoomId(id);
+    if (!validation.ok) {
+      setReplayInputError(validation.message);
+      setErrorInfo({ kind: 'invalid', message: 'That doesn’t look like a valid room ID.' });
+      return;
+    }
+    setReplayInputError('');
+    window.history.pushState({}, '', `/?replay=${encodeURIComponent(id)}`);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
+  const retry = () => {
+    setSlowLoading(false);
+    setStatus('loading');
+    setErrorInfo(null);
+    setRetryAfter(0);
+    setRetryNonce((value) => value + 1);
   };
 
   if (status === 'loading') {
@@ -281,21 +374,46 @@ const Replay = ({ roomId }) => {
           <span className="replay-spacer" />
           <button onClick={goBack}>Back</button>
         </div>
-        <div className="replay-message">Loading recording…</div>
+        <div className="replay-message replay-loading" aria-live="polite"><span className="cc-spinner" aria-hidden="true" />Loading recording…{slowLoading && <small>Waking up the server, this can take up to a minute on the free plan…</small>}</div>
       </div>
     );
   }
 
   if (status === 'error') {
+    const attemptedId = normalizeRoomId(roomId);
+    const notFound = errorInfo?.kind === 'not-found';
+    const rateLimited = errorInfo?.kind === 'rate-limit';
+    const invalid = errorInfo?.kind === 'invalid';
     return (
-      <div className="replay-container">
+      <div className="replay-container replay-error-shell" role="alert">
         <div className="replay-topbar">
           <HomeLink />
-          <h2>Replay: {roomId}</h2>
+          <h2>Replay unavailable</h2>
           <span className="replay-spacer" />
-          <button onClick={goBack}>Back</button>
+          <button onClick={goBack}>Back to home</button>
         </div>
-        <div className="replay-message">Error: {error}</div>
+        <div className="replay-message replay-error-card">
+          <h1 ref={errorHeadingRef} tabIndex="-1">
+            {notFound ? `No recording found for ${displayRoomId(attemptedId)}` : invalid ? 'That doesn’t look like a valid room ID.' : rateLimited ? `Too many requests. Try again in ${retryAfter} seconds.` : 'Couldn’t reach the server'}
+          </h1>
+          {notFound && <ul>
+            <li>The ID has a typo or an extra character</li>
+            <li>The session never started or was never recorded</li>
+            <li>Recordings are kept for 24 hours and are cleared when the server restarts</li>
+          </ul>}
+          {rateLimited && <p>Please wait for the cooldown before retrying.</p>}
+          {!notFound && !invalid && !rateLimited && <p>Check your connection and try again.</p>}
+          <form onSubmit={watchAnother} className="replay-error-form">
+            <label htmlFor="replay-error-id">Room ID</label>
+            <input id="replay-error-id" value={replayInput} onChange={(event) => { setReplayInput(event.target.value); setReplayInputError(''); }} aria-describedby={replayInputError ? 'replay-error-id-message' : undefined} aria-invalid={!!replayInputError} />
+            <button type="submit">Watch replay</button>
+            {replayInputError && <small id="replay-error-id-message" className="cc-field-error" role="alert">{replayInputError}</small>}
+          </form>
+          <div className="replay-error-actions">
+            {(rateLimited || (!invalid && !notFound)) && <button onClick={retry} disabled={rateLimited && retryAfter > 0}>Retry</button>}
+            <button onClick={goBack}>Back to home</button>
+          </div>
+        </div>
       </div>
     );
   }

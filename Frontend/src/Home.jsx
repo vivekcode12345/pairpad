@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Card, Input } from './components/ui';
+import { normalizeRoomId, validateRoomId } from './utils/roomId';
 import HeroPreview from './components/HeroPreview';
 import Features from './components/Features';
 import HowItWorks from './components/HowItWorks';
@@ -18,7 +19,7 @@ export default function Home() {
   const [replayRoom, setReplayRoom] = useState('');
   const [joinTried, setJoinTried] = useState(false);
   const [interviewTried, setInterviewTried] = useState(false);
-  const [replayTried, setReplayTried] = useState(false);
+  const [replayError, setReplayError] = useState('');
   const [interviewError, setInterviewError] = useState('');
   const nameRef = useRef(null);
   const interviewNameRef = useRef(null);
@@ -70,8 +71,21 @@ export default function Home() {
   };
   const watch = (event) => {
     event.preventDefault();
-    setReplayTried(true);
-    if (replayRoom.trim()) window.location.href = `/?replay=${encodeURIComponent(replayRoom.trim())}`;
+    const id = normalizeRoomId(replayRoom);
+    const validation = validateRoomId(id);
+    if (!validation.ok) {
+      setReplayError(validation.message);
+      return;
+    }
+    window.location.href = `/?replay=${encodeURIComponent(id)}`;
+  };
+  const handleReplayChange = (event) => {
+    setReplayRoom(event.target.value);
+    setReplayError('');
+  };
+  const normalizeReplayInput = () => {
+    const normalized = normalizeRoomId(replayRoom);
+    if (normalized !== replayRoom) setReplayRoom(normalized);
   };
 
   return <main className="cc-home" id="main-content">
@@ -101,7 +115,8 @@ export default function Home() {
         <Card className="cc-home-card cc-home-card-secondary">
           <div className="cc-card-intro"><h2 id="replay" ref={replayHeadingRef} tabIndex="-1">Watch a replay</h2><p>Review a completed coding session from its room ID.</p></div>
           <form className="cc-card-form cc-compact-form" onSubmit={watch}>
-            <Input label="Room ID" value={replayRoom} onChange={(e) => setReplayRoom(e.target.value)} ref={replayNameRef} placeholder="room-id" error={replayTried && !replayRoom.trim() ? 'Enter a room ID' : undefined} />
+            <Input label="Room ID" value={replayRoom} onChange={handleReplayChange} onBlur={normalizeReplayInput} onPaste={(event) => { event.preventDefault(); setReplayRoom(normalizeRoomId(event.clipboardData.getData('text'))); setReplayError(''); }} ref={replayNameRef} placeholder="room-id" aria-describedby={replayError ? 'replay-room-error' : undefined} aria-invalid={!!replayError} />
+            {replayError && <span id="replay-room-error" className="cc-field-error" role="alert">{replayError}</span>}
             <Button variant="primary" type="submit">Watch replay</Button>
           </form>
         </Card>
