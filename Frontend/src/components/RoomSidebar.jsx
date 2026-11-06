@@ -1,9 +1,9 @@
 import { Avatar } from './ui';
 import VideoRoom from './VideoRoom';
 
-export default function RoomSidebar({ collapsed, socket, userName, participants, users }) {
+export default function RoomSidebar({ collapsed, mobileOpen, socket, userName, participants, users }) {
   return (
-    <aside className={`cc-sidebar ${collapsed ? 'collapsed' : ''}`}>
+    <aside id="room-sidebar" className={`cc-sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
       <VideoRoom socket={socket} userName={userName} participants={participants} />
       <h2>People ({users.length})</h2>
       <div className="cc-people">

@@ -5,7 +5,7 @@ import { isDefaultTemplate, LANGUAGES, TEMPLATES } from './templates';
 import socket from './socket';
 import { updateRemoteCursorStyles, removeRemoteCursorStyles } from './remoteCursors';
 import { Button, HomeLink, IconButton, useToast } from './components/ui';
-import { CopyIcon, MenuIcon } from './components/Icons';
+import { CloseIcon, CopyIcon, MenuIcon } from './components/Icons';
 import RoomSidebar from './components/RoomSidebar';
 import RoomWorkspace from './components/RoomWorkspace';
 import './styles/room.css';
@@ -29,6 +29,9 @@ export default function Room({ roomId: initialRoomId = '', initialName = '' }) {
   const [joined, setJoined] = useState(false);
   const [panel, setPanel] = useState('input');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('room-sidebar-collapsed') === '1');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const drawerButtonRef = useRef(null);
+  const drawerWasOpen = useRef(false);
   const [panelSize, setPanelSize] = useState(() => Number(localStorage.getItem('room-panel-size')) || 30);
   const [cursorPosition, setCursorPosition] = useState({ lineNumber: 1, column: 1 });
   const sessionRef = useRef(null);
@@ -123,6 +126,15 @@ export default function Room({ roomId: initialRoomId = '', initialName = '' }) {
     localStorage.setItem('room-sidebar-collapsed', sidebarCollapsed ? '1' : '0');
     localStorage.setItem('room-panel-size', String(panelSize));
   }, [panelSize, sidebarCollapsed]);
+  useEffect(() => {
+    const layout = () => editorRef.current?.layout();
+    window.addEventListener('orientationchange', layout);
+    window.visualViewport?.addEventListener('resize', layout);
+    return () => {
+      window.removeEventListener('orientationchange', layout);
+      window.visualViewport?.removeEventListener('resize', layout);
+    };
+  }, []);
 
   const handleEditorMount = (editor) => {
     editorRef.current = editor;
@@ -133,18 +145,56 @@ export default function Room({ roomId: initialRoomId = '', initialName = '' }) {
     refreshRemoteCursorStyles();
   };
 
+  useEffect(() => {
+    if (!mobileSidebarOpen) {
+      if (drawerWasOpen.current && window.matchMedia('(max-width: 820px)').matches) {
+        drawerButtonRef.current?.focus();
+      }
+      drawerWasOpen.current = false;
+      return undefined;
+    }
+    drawerWasOpen.current = true;
+    const previousOverflow = document.body.style.overflow;
+    const close = (event) => {
+      if (event.key === 'Escape') setMobileSidebarOpen(false);
+      if (event.key !== 'Tab') return;
+      const drawer = document.getElementById('room-sidebar');
+      const focusable = drawer ? [...drawer.querySelectorAll('button, a, input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter((element) => !element.disabled) : [];
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', close);
+    document.getElementById('room-sidebar')?.querySelector('button, a, input, select, textarea')?.focus();
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', close);
+    };
+  }, [mobileSidebarOpen]);
   if (!joined) return <div className="cc-room"><div className="cc-room-topbar"><HomeLink /></div><div className="cc-empty-output">Enter a name and room ID to join.</div></div>;
   const connection = statusFor(connected);
   return <main className="cc-room">
     <header className="cc-room-topbar">
-      <IconButton label="Toggle people sidebar" onClick={() => setSidebarCollapsed((value) => !value)}><MenuIcon /></IconButton>
+      <IconButton ref={drawerButtonRef} className="cc-room-menu-button" label={mobileSidebarOpen ? 'Close people drawer' : 'Open people drawer'} aria-expanded={mobileSidebarOpen} aria-controls="room-sidebar" onClick={() => {
+        if (window.matchMedia('(max-width: 820px)').matches) setMobileSidebarOpen((value) => !value);
+        else setSidebarCollapsed((value) => !value);
+      }}>{mobileSidebarOpen ? <CloseIcon /> : <MenuIcon />}</IconButton>
       <HomeLink /><div className="cc-room-chip">{roomId}</div>
-      <Button size="small" variant="ghost" onClick={() => copy(roomId, 'ID copied')}><CopyIcon /> Copy ID</Button>
-      <Button size="small" variant="ghost" onClick={() => copy(`${window.location.origin}/?replay=${encodeURIComponent(roomId)}`, 'Link copied')}>Copy replay link</Button>
-      <div className="cc-top-spacer" /><div className="cc-connection"><span className={`cc-status-dot ${connection.className}`} />{connection.label}</div><Button size="small" variant="danger" onClick={leaveRoom}>Leave</Button>
+      <Button className="cc-room-copy-id" size="small" variant="ghost" onClick={() => copy(roomId, 'ID copied')}><CopyIcon /> Copy ID</Button>
+      <Button className="cc-room-copy-replay" size="small" variant="ghost" onClick={() => copy(`${window.location.origin}/?replay=${encodeURIComponent(roomId)}`, 'Link copied')}>Copy replay link</Button>
+      <div className="cc-top-spacer" /><div className="cc-connection"><span className={`cc-status-dot ${connection.className}`} />{connection.label}</div><Button className="cc-room-leave" size="small" variant="danger" onClick={leaveRoom}>Leave</Button>
     </header>
     <div className="cc-room-body">
-      <RoomSidebar collapsed={sidebarCollapsed} socket={socket} userName={userName} participants={participants} users={users} />
+      {mobileSidebarOpen && <button className="cc-room-backdrop" aria-label="Close people drawer" onClick={() => setMobileSidebarOpen(false)} />}
+      <RoomSidebar collapsed={sidebarCollapsed} mobileOpen={mobileSidebarOpen} socket={socket} userName={userName} participants={participants} users={users} />
       <RoomWorkspace
         language={language}
         languages={LANGUAGES}

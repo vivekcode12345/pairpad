@@ -140,6 +140,7 @@ export default function Interview({ roomId }) {
   const [duration, setDuration] = useState(45);
   const [joinStarted, setJoinStarted] = useState(false);
   const [reconnecting, setReconnecting] = useState(!socket.connected);
+  const [mobileTab, setMobileTab] = useState('code');
   const sessionRef = useRef(null);
   const bindingRef = useRef(null);
   const editorRef = useRef(null);
@@ -310,6 +311,15 @@ export default function Interview({ roomId }) {
   useEffect(() => {
     editorRef.current?.updateOptions({ readOnly: !isInterviewer && status !== 'running' });
   }, [isInterviewer, status]);
+  useEffect(() => {
+    const layout = () => editorRef.current?.layout();
+    window.addEventListener('orientationchange', layout);
+    window.visualViewport?.addEventListener('resize', layout);
+    return () => {
+      window.removeEventListener('orientationchange', layout);
+      window.visualViewport?.removeEventListener('resize', layout);
+    };
+  }, []);
 
   const configure = (nextProblem, nextDuration = duration) => {
     setProblemId(nextProblem);
@@ -461,9 +471,14 @@ export default function Interview({ roomId }) {
           {problem && <ProblemPanel problem={problem} />}
         </div>
       ) : (
-        <div className="iv-running">
+        <div className={`iv-running iv-mobile-running-${mobileTab}`}>
+          <nav className="iv-mobile-tabs" aria-label="Interview panels">
+            <button className={mobileTab === 'problem' ? 'active' : ''} onClick={() => setMobileTab('problem')}>Problem</button>
+            <button className={mobileTab === 'code' ? 'active' : ''} onClick={() => setMobileTab('code')}>Code</button>
+            <button className={mobileTab === 'results' ? 'active' : ''} onClick={() => setMobileTab('results')}>Results</button>
+          </nav>
           <ProblemPanel problem={problem} />
-          <section className="iv-editor-area">
+          <section className={`iv-editor-area iv-mobile-tab-${mobileTab}`}>
             <Editor height="100%" language={language} defaultLanguage={language} theme="vs-light" options={{ minimap: { enabled: false }, fontSize: 16, readOnly: !isInterviewer && status !== 'running' }} onMount={(editor) => {
               editorRef.current = editor;
               const session = sessionRef.current;

@@ -84,6 +84,7 @@ const Replay = ({ roomId }) => {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [clock, setClock] = useState(0);
+  const [mobileTab, setMobileTab] = useState('events');
 
   // Mutable playback state kept in refs so the rAF loop always reads fresh values.
   const timelineRef = useRef([]);
@@ -99,6 +100,7 @@ const Replay = ({ roomId }) => {
   const rafRef = useRef(0);
   const lastTsRef = useRef(0);
   const errorHeadingRef = useRef(null);
+  const replayEditorRef = useRef(null);
 
   useEffect(() => {
     speedRef.current = speed;
@@ -302,6 +304,16 @@ const Replay = ({ roomId }) => {
     return () => clearInterval(timer);
   }, [retryAfter]);
 
+  useEffect(() => {
+    const layout = () => replayEditorRef.current?.layout();
+    window.addEventListener('orientationchange', layout);
+    window.visualViewport?.addEventListener('resize', layout);
+    return () => {
+      window.removeEventListener('orientationchange', layout);
+      window.visualViewport?.removeEventListener('resize', layout);
+    };
+  }, []);
+
   // Cleanup on unmount: stop the animation frame and destroy the Y.Doc.
   useEffect(() => {
     return () => {
@@ -445,6 +457,7 @@ const Replay = ({ roomId }) => {
             minimap: { enabled: false },
             fontSize: 16,
           }}
+          onMount={(editor) => { replayEditorRef.current = editor; }}
         />
       </div>
 
@@ -472,8 +485,12 @@ const Replay = ({ roomId }) => {
         </span>
       </div>
 
-      <div className="replay-bottom">
-        <div className="replay-events">
+      <div className="replay-mobile-tabs" role="tablist">
+        <button className={mobileTab === 'events' ? 'active' : ''} onClick={() => setMobileTab('events')}>Events</button>
+        <button className={mobileTab === 'output' ? 'active' : ''} onClick={() => setMobileTab('output')}>Output</button>
+      </div>
+      <div className={`replay-bottom replay-mobile-tab-${mobileTab}`}>
+        <div className="replay-events" role="tabpanel">
           <div className="replay-users-online">
             Users: {users.length ? users.join(', ') : '—'}
           </div>
@@ -493,7 +510,7 @@ const Replay = ({ roomId }) => {
             </div>
           ))}
         </div>
-        <div className="replay-output">
+        <div className="replay-output" role="tabpanel">
           {lastRun ? (
             <>
               <div className="replay-output-head">Output — {lastRun.u}</div>
