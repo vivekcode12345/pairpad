@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { HomeLink, IconButton } from './ui';
-import { GithubIcon, MenuIcon, SearchIcon } from './Icons';
+import { CloseIcon, GithubIcon, MenuIcon, SearchIcon } from './Icons';
 import CommandPalette from './CommandPalette';
 import { scrollToSection } from '../scrollTo';
 
@@ -22,6 +22,7 @@ export default function Navbar({ onGenerate, focusName, sectionRefs }) {
   const navRef = useRef(null);
   const mobileMenuRef = useRef(null);
   const triggerRef = useRef(null);
+  const menuTriggerRef = useRef(null);
   const highlightRef = useRef(null);
   const linksRef = useRef({});
   const [shortcut] = useState(() => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘K' : 'Ctrl K');
@@ -33,6 +34,10 @@ export default function Navbar({ onGenerate, focusName, sectionRefs }) {
     setMobileOpen(false);
   }, [sectionRefs]);
   const openPalette = useCallback(() => setPaletteOpen(true), []);
+  const closeMobile = useCallback((restoreFocus = false) => {
+    setMobileOpen(false);
+    if (restoreFocus) window.requestAnimationFrame(() => menuTriggerRef.current?.focus());
+  }, []);
   const actions = {
     join: () => { scrollTo('join'); focusName('join'); },
     interview: () => { scrollTo('interview'); focusName('interview'); },
@@ -58,14 +63,29 @@ export default function Navbar({ onGenerate, focusName, sectionRefs }) {
   }, []);
   useEffect(() => {
     if (!mobileOpen) return undefined;
-    const onKeyDown = (event) => { if (event.key === 'Escape') setMobileOpen(false); };
+    const onKeyDown = (event) => { if (event.key === 'Escape') closeMobile(true); };
     const onPointerDown = (event) => {
-      if (!mobileMenuRef.current?.contains(event.target) && !event.target.closest('.cc-navbar')) setMobileOpen(false);
+      if (!mobileMenuRef.current?.contains(event.target) && !event.target.closest('.cc-navbar')) closeMobile();
     };
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('pointerdown', onPointerDown);
     return () => { document.removeEventListener('keydown', onKeyDown); document.removeEventListener('pointerdown', onPointerDown); };
-  }, [mobileOpen]);
+  }, [closeMobile, mobileOpen]);
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const previousPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
+    const onResize = () => { if (window.innerWidth > 820) closeMobile(); };
+    window.addEventListener('resize', onResize);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPaddingRight;
+      window.removeEventListener('resize', onResize);
+    };
+  }, [closeMobile, mobileOpen]);
   useEffect(() => {
     const observers = LINKS.map(([, id]) => {
       const element = sectionRefs[id]?.current;
@@ -104,10 +124,10 @@ export default function Navbar({ onGenerate, focusName, sectionRefs }) {
         <div className="cc-navbar-actions">
           <button className="cc-search-pill" type="button" ref={triggerRef} onClick={openPalette}><SearchIcon /><span>Quick actions</span><kbd>{shortcut}</kbd></button>
           <a className="cc-navbar-github" href={GITHUB_URL} target="_blank" rel="noopener noreferrer" aria-label="GitHub repository"><GithubIcon /></a>
-          <IconButton label="Open navigation menu" aria-expanded={mobileOpen} aria-controls="cc-mobile-menu" onClick={() => setMobileOpen((value) => !value)}><MenuIcon /></IconButton>
+          <IconButton ref={menuTriggerRef} label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={mobileOpen} aria-controls="cc-mobile-menu" onClick={() => setMobileOpen((value) => !value)}>{mobileOpen ? <CloseIcon /> : <MenuIcon />}</IconButton>
         </div>
       </header>
-      {mobileOpen && <div className="cc-mobile-menu" id="cc-mobile-menu" ref={mobileMenuRef}><nav aria-label="Mobile primary">{LINKS.map(([label, id]) => <a href={`#${id}`} key={id} onClick={(event) => { event.preventDefault(); scrollTo(id); }}>{label}</a>)}</nav><button type="button" onClick={() => { setMobileOpen(false); openPalette(); }}><SearchIcon />Quick actions</button><a href={GITHUB_URL} target="_blank" rel="noopener noreferrer"><GithubIcon />GitHub repository</a></div>}
+      {mobileOpen && <div className="cc-mobile-menu" id="cc-mobile-menu" ref={mobileMenuRef}><nav aria-label="Mobile primary">{LINKS.map(([label, id]) => <a href={`#${id}`} key={id} aria-current={active === id ? 'true' : undefined} onClick={(event) => { event.preventDefault(); scrollTo(id); }}>{label}</a>)}</nav><button type="button" onClick={() => { closeMobile(); openPalette(); }}><SearchIcon />Quick actions</button><a href={GITHUB_URL} target="_blank" rel="noopener noreferrer"><GithubIcon />GitHub repository</a></div>}
     </div>
     {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} triggerRef={triggerRef} actions={actions} />}
   </>, document.body);

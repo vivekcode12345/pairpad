@@ -7,9 +7,9 @@ export function Button({ variant = 'secondary', size = '', loading = false, clas
     {loading && <span className="cc-spinner" aria-hidden="true" />}{children}
   </button>;
 }
-export function IconButton({ children, label, ...props }) {
-  return <button className="cc-icon-button cc-tooltip" aria-label={label} title={label} {...props}>{children}</button>;
-}
+export const IconButton = forwardRef(function IconButton({ children, label, ...props }, ref) {
+  return <button ref={ref} className="cc-icon-button cc-tooltip" aria-label={label} title={label} {...props}>{children}</button>;
+});
 export const Input = forwardRef(function Input({ label, error, ...props }, ref) {
   return <label className="cc-field">{label && <span>{label}</span>}<input ref={ref} className={`cc-input ${error ? 'error' : ''}`} {...props} />{error && <small className="cc-field-error">{error}</small>}</label>;
 });
